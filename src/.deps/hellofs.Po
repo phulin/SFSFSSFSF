@@ -1,16 +1,14 @@
-hellofs.o hellofs.o: hellofs.c /usr/include/stdio.h \
-  /usr/include/sys/cdefs.h /usr/include/sys/_symbol_aliasing.h \
-  /usr/include/sys/_posix_availability.h /usr/include/Availability.h \
-  /usr/include/AvailabilityInternal.h /usr/include/_types.h \
-  /usr/include/sys/_types.h /usr/include/machine/_types.h \
-  /usr/include/i386/_types.h /usr/include/secure/_stdio.h \
-  /usr/include/secure/_common.h /usr/include/string.h \
-  /usr/include/strings.h /usr/include/secure/_string.h \
+hellofs.o hellofs.o: hellofs.c /usr/include/stdio.h /usr/include/_types.h \
+  /usr/include/sys/_types.h /usr/include/sys/cdefs.h \
+  /usr/include/machine/_types.h /usr/include/i386/_types.h \
+  /usr/include/secure/_stdio.h /usr/include/secure/_common.h \
+  /usr/include/string.h /usr/include/secure/_string.h \
   /usr/include/errno.h /usr/include/sys/errno.h /usr/include/fcntl.h \
   /usr/include/sys/fcntl.h /usr/local/include/osxfuse/fuse.h \
   /usr/local/include/osxfuse/fuse/fuse.h \
   /usr/local/include/osxfuse/fuse/fuse_common.h \
-  /usr/local/include/osxfuse/fuse/fuse_opt.h /usr/include/stdint.h \
+  /usr/local/include/osxfuse/fuse/fuse_opt.h \
+  /usr/lib/gcc/i686-apple-darwin10/4.2.1/include/stdint.h \
   /usr/include/time.h /usr/include/_structs.h /usr/include/sys/_structs.h \
   /usr/include/utime.h /usr/include/sys/types.h \
   /usr/include/sys/appleapiopts.h /usr/include/machine/types.h \
@@ -18,23 +16,16 @@ hellofs.o hellofs.o: hellofs.c /usr/include/stdio.h \
   /usr/include/machine/endian.h /usr/include/i386/endian.h \
   /usr/include/sys/_endian.h /usr/include/libkern/_OSByteOrder.h \
   /usr/include/libkern/i386/_OSByteOrder.h /usr/include/sys/stat.h \
+  /usr/include/Availability.h /usr/include/AvailabilityInternal.h \
   /usr/include/sys/statvfs.h
 
 /usr/include/stdio.h:
 
-/usr/include/sys/cdefs.h:
-
-/usr/include/sys/_symbol_aliasing.h:
-
-/usr/include/sys/_posix_availability.h:
-
-/usr/include/Availability.h:
-
-/usr/include/AvailabilityInternal.h:
-
 /usr/include/_types.h:
 
 /usr/include/sys/_types.h:
+
+/usr/include/sys/cdefs.h:
 
 /usr/include/machine/_types.h:
 
@@ -45,8 +36,6 @@ hellofs.o hellofs.o: hellofs.c /usr/include/stdio.h \
 /usr/include/secure/_common.h:
 
 /usr/include/string.h:
-
-/usr/include/strings.h:
 
 /usr/include/secure/_string.h:
 
@@ -66,7 +55,7 @@ hellofs.o hellofs.o: hellofs.c /usr/include/stdio.h \
 
 /usr/local/include/osxfuse/fuse/fuse_opt.h:
 
-/usr/include/stdint.h:
+/usr/lib/gcc/i686-apple-darwin10/4.2.1/include/stdint.h:
 
 /usr/include/time.h:
 
@@ -97,5 +86,9 @@ hellofs.o hellofs.o: hellofs.c /usr/include/stdio.h \
 /usr/include/libkern/i386/_OSByteOrder.h:
 
 /usr/include/sys/stat.h:
+
+/usr/include/Availability.h:
+
+/usr/include/AvailabilityInternal.h:
 
 /usr/include/sys/statvfs.h:
