@@ -20,3 +20,6 @@ ICING:
 * fix wtimes/atimes so that we don't give ourselves away
 
 
+
+RESOURCES:
+* http://mij.oltrelinux.com/devel/autoconf-automake/
