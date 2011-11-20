@@ -1,0 +1,6 @@
+# exclude everything, then reinclude it
+*
+!.gitignore
+!*.tar.gz
+!*.zip
+!*.tar.bz2
