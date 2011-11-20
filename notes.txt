@@ -1,0 +1,22 @@
+FIRST STEPS:
+* Decide on our favorite lossless format (codec+container), where favorite means easiest to work with.
+* Look at libffmpeg for extracting shit (how ubiquitous is it, on systems where people listen to audio files?)
+* Figure out how to extract an ALAC stream from an MPEG-4 part 14 container
+* extract the low-order bits from several ALAC files and run them through ent to see if they are random (as we expect)
+* store a short text file in the low-order bits of an ALAC file (no encryption)
+* mount the low-order bits of a single text file as a very basic filesystem using FUSE (use mmap?)
+
+NEXT STEPS:
+* implement our ext2 variant atop ALAC files
+* implement random-access gzip (see zran.c) atop ext2 atop ALAC files
+  * decide on a file-format for random-access gzip
+* use mmap and the audio codec to do read-write efficiently in the filesystem (encoding and decoding on the fly)
+* get the encryption right (key derivation, HMAC, correct modes, etc)
+  * use mlock(2) to prevent paging-out of sensitive data
+  * acquire copies of "Secure Programming Cookbook for C and C++" (O'Reilly), "Cryptography Engineering" (Wiley), and "Applied Cryptography" (Wiley)
+
+ICING:
+* multithreading
+* fix wtimes/atimes so that we don't give ourselves away
+
+
