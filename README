@@ -1,0 +1,15 @@
+To build:
+$ autogen.sh
+$ ./configure
+$ make
+
+
+To cleanly rebuild:
+$ make clean
+$ make
+
+
+
+FIXME (does not work yet):
+To remove all the autotools junk (because these things should not go in the git repo, and it makes it easier to add only what you should):
+make mrproper
