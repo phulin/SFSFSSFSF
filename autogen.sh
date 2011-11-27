@@ -1,7 +1,5 @@
 #!/bin/bash
 
-aclocal
-automake --add-missing
-autoconf
+autoreconf
 
 ./configure $*
