@@ -2,4 +2,4 @@
 
 AUTOMAKE_OPTIONS = foreign
 SUBDIRS = src 
-
+AM_CFLAGS = -I/usr/local/include
