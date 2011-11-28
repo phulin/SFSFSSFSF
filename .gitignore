@@ -13,3 +13,5 @@ config.status
 audio
 ffmpeg
 *.swp
+config.h
+stamp-h1
