@@ -20,10 +20,8 @@ PKG_CHECK_MODULES([fuse], [fuse])
 # PKG_CHECK_MODULES([libavcodec], libavcodec)
 # PKG_CHECK_MODULES([libavformat], libavformat)
 
-AC_CHECK_LIB([avcodec], [avcodec_version])
-AC_CHECK_LIB([avformat], [avforamt_version])
-
 # Checks for header files.
+AC_CHECK_HEADERS([endian.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 
