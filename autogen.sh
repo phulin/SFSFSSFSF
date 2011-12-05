@@ -1,5 +1,5 @@
 #!/bin/bash
 
-autoreconf
+autoreconf -i
 
 ./configure $*

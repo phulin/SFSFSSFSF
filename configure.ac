@@ -8,6 +8,7 @@ AM_INIT_AUTOMAKE
 AC_CONFIG_HEADERS([config.h])
 
 AC_PROG_CC
+AC_PROG_CXX
 
 AC_C_BIGENDIAN
 
@@ -20,10 +21,8 @@ PKG_CHECK_MODULES([fuse], [fuse])
 # PKG_CHECK_MODULES([libavcodec], libavcodec)
 # PKG_CHECK_MODULES([libavformat], libavformat)
 
-AC_CHECK_LIB([avcodec], [avcodec_version])
-AC_CHECK_LIB([avformat], [avforamt_version])
-
 # Checks for header files.
+AC_CHECK_HEADERS([endian.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 
