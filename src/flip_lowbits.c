@@ -1,5 +1,4 @@
 // TODO: preserve metadata
-// TODO: parallelize?
 // TODO: check low-order bits for entropy
 // TODO: sliding-window entropy estimator
 // TODO: actually make into filesystem
@@ -47,42 +46,54 @@ void usage(char *argv0)
 	exit(1);
 }
 
-// decode up to maxlen bytes into decode_buf
+// decode up to maxbits bits into decode_buf
+// precondition: maxbits <= 8 * CHUNK
 // bit_index is constant across calls!
 // this means you can only decode one stream with this function.
 // returns number of _BITS_ decoded.
-size_t decode_bits(FILE *pipein, uint8_t *decode_buf, size_t maxlen)
+static size_t decode_bits(FILE *pipein, uint8_t *decode_buf, size_t maxbits)
 {
-	// number of samples estimated
-	size_t samples_len = 8 * maxlen, num_read;
+	size_t num_read, bits_read = 0;
+	uint8_t *decode_ptr = decode_buf;
 	int i;
-	static uint16_t pcm_buf[16 * CHUNK];
+	static uint16_t pcm_buf[8 * CHUNK];
 	static int bit_index = 0;
+	static bool first_time = true;
 
-	num_read = fread(pcm_buf, 2, samples_len, pipein);
+	num_read = fread(pcm_buf, 2, maxbits, pipein);
 	if (num_read == 0) err("Pipe error on read");
+
+	// make sure we zero the first time
+	if (first_time) {
+		*decode_ptr = 0;
+		first_time = false;
+	}
 
 	for (i = 0; i < num_read; i++) {
 		if (bit_index >= 8) {
 			bit_index = 0;
-			decode_buf++;
+			decode_ptr++;
+			*decode_ptr = 0;
 		}
 
 		if (encodable(pcm_buf[i])) {
 			// extract bit
-			*decode_buf |= (*decode_buf & 0x1) << bit_index;
+			*decode_ptr |= (pcm_buf[i] & 0x1) << bit_index;
 			bit_index++;
+			bits_read++;
 		}
 	}
 
-	return num_read;
+	return bits_read;
 }
 
-void decode(FILE *pipein, char *filename)
+static void decode(FILE *pipein, char *filename)
 {
 	uint8_t decode_buf[CHUNK + sizeof(struct pstat)], *decode_ptr = decode_buf;
 	FILE *f;
-	size_t bits_read = 0, pstat_bits = 8 * sizeof(struct pstat);
+	size_t total_bits_read = 0, total_bits_written = 0;
+	size_t pstat_bits = 8 * sizeof(struct pstat);
+	size_t bits_read;
 	struct pstat *pfi = (struct pstat *)decode_buf;
 	uint64_t file_bits = 0;
 
@@ -94,25 +105,44 @@ void decode(FILE *pipein, char *filename)
 	// so overflow ends up as part of what we're actually decoding
 	// the issue is that it's hard to avoid 'spill' in ways that
 	// aren't super, super slow
-	while (bits_read < pstat_bits) {
-		bits_read += decode_bits(pipein, decode_ptr, sizeof(struct pstat));
+	// note, bit index is stored in decode_bits, so we can throw out
+	// non-byte-aligned data
+	while (total_bits_read < pstat_bits) {
+		total_bits_read += decode_bits(pipein, decode_ptr + (total_bits_read / 8), pstat_bits);
 	}
 	file_bits = 8 * pfi->pst_size;
+
 	// now we start decoding for real
 	decode_ptr += sizeof(struct pstat);
-	bits_read -= pstat_bits;
 
-	while (!feof(pipein) && (bits_read < file_bits)) {
-		size_t num_written, num_read;
-		num_read = decode_bits(pipein, decode_ptr, CHUNK);
-		bits_read += num_read;
+	bits_read = total_bits_read - pstat_bits;
+	total_bits_read = 0;
 
-		num_written = fwrite(decode_buf, 1, num_read, f);
-		if (num_written == 0) err("Pipe error on write");
+	while (!feof(pipein) && (total_bits_read < file_bits)) {
+		size_t bytes_written, bytes_to_write;
+		size_t bits_to_write, bits_left;
+
+		total_bits_read += bits_read;
+		// this is how many bits are fully decoded and
+		// ready to be written
+		bits_to_write = total_bits_read - total_bits_written;
+		bits_left = file_bits - total_bits_written;
+		if (bits_to_write > bits_left)
+			bits_to_write = bits_left;
+		bytes_to_write = bits_to_write / 8;
+
+		bytes_written = fwrite(decode_ptr, 1, bytes_to_write, f);
+		if (bytes_written == 0) err("Pipe error on write");
+		total_bits_written += 8 * bytes_written;
+
+		// move partially-decoded byte to right place.
+		decode_ptr[0] = decode_ptr[bytes_written];
+		// and decode more bits
+		bits_read = decode_bits(pipein, decode_ptr, 8 * CHUNK);
 	}
 }
 
-void encode(FILE *pipein, char *location, char *filename)
+static void encode(FILE *pipein, char *location, char *filename)
 {
 	int bit_index = 0;
 	bool still_encoding = true;
