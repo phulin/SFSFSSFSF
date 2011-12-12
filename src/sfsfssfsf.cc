@@ -26,13 +26,26 @@
   #define SFSFSSFSF_FORMAT "u16le"
 #endif
 
-#define err(msg) throw strcat(msg, strcat(": ", strerror(errno)))
+static void err(const char *msg)
+{
+	char *error_s = strerror(errno);
+	char *ptr = new char[strlen(msg) + strlen(error_s) + 8];
+	sprintf(ptr, "%s: %s", msg, error_s);
+}
+
+static void print_err(char *e)
+{
+	fprintf(stderr, "%s\n", e);
+	delete e;
+}
+
+static char *superblock_file;
 
 // decode up to maxbytes bytes into decode_buf
 // precondition: maxbytes <= SFSFSSFSF_CHUNK
 // returns number of bytes decoded.
 // will decode maxbytes bytes unless at EOF
-size_t SFSFSSFSF_File::decode_bits(uint8_t *decode_ptr, size_t maxbytes)
+size_t SFSFSSFSF_File::decode_bits(FILE *pipein, uint8_t *decode_ptr, size_t maxbytes)
 {
 	size_t samples_read = 0, bits_read = 0;
 	size_t maxbits = 8 * maxbytes;
@@ -69,22 +82,24 @@ size_t SFSFSSFSF_File::decode_bits(uint8_t *decode_ptr, size_t maxbytes)
 // TODO: support mode
 // TODO: locking mechanism for files
 // decode file, etc.
-SFSFSSFSF_File::SFSFSSFSF_File(char *location, char *mode)
+SFSFSSFSF_File::SFSFSSFSF_File(char *_location, char *mode)
 {
+	location = _location;
+
 	char command[COMMAND_LEN];
 	snprintf(command, COMMAND_LEN,
 			 "ffmpeg -i %s -f " SFSFSSFSF_FORMAT " pipe:",
-			 filename);
+			 location);
 
-	pipein = popen(command, "r");
+	FILE *pipein = popen(command, "r");
 	if (!pipein) err("Couldn't open ffmpeg");
 
 	size_t total_bytes_read = 0;
 	uint64_t file_bytes = 0;
 
-	decode_bits((uint8_t *)&pfi, sizeof(struct pstat));
-	if (pst.magic != SFSFSSFSF_MAGIC) throw "Not an SFSFSSFSF";
-	file_bytes = pst.pst_size;
+	decode_bits(pipein, (uint8_t *)&pfi, sizeof(struct pstat));
+	if (pfi.magic != SFSFSSFSF_MAGIC) throw "Not an SFSFSSFSF";
+	file_bytes = pfi.pst_size;
 
 	// initialize data; hopefully malloc will be okay with this
 	data = new uint8_t[file_bytes];
@@ -94,7 +109,7 @@ SFSFSSFSF_File::SFSFSSFSF_File(char *location, char *mode)
 		size_t bytes_read;
 
 		bytes_read = decode_bits(pipein, decode_ptr, SFSFSSFSF_CHUNK);
-		if (bytes_read == 0) throw "Pipe error on read";
+		if (bytes_read == 0) { delete data; throw "Pipe error on read"; }
 
 		total_bytes_read += bytes_read;
 		decode_ptr += bytes_read;
@@ -111,41 +126,45 @@ SFSFSSFSF_File::~SFSFSSFSF_File()
 }
 
 // make sure we don't read or write past end of data buf
-static inline size_t SFSFSSFSF_File::bound_num_bytes(size_t num_bytes)
+inline size_t SFSFSSFSF_File::bound_num_bytes(off_t offset, size_t num_bytes)
 {
-	size_t bytes_left = data + pfi.pst_size - cur_ptr;
+	size_t bytes_left = pfi.pst_size - offset;
 	if (num_bytes > bytes_left)
 		return bytes_left;
 	else
 		return num_bytes;
 }
 
-size_t SFSFSSFSF_File::read(size_t num_bytes, uint8_t *buf)
+size_t SFSFSSFSF_File::read(off_t offset, size_t num_bytes, uint8_t *buf)
 {
-	num_bytes = bound_num_bytes(num_bytes);
+	num_bytes = bound_num_bytes(offset, num_bytes);
 
-	memcpy(buf, cur_ptr, num_bytes);
-	cur_ptr += num_bytes;
+	memcpy(buf, data + offset, num_bytes);
 
 	return num_bytes;
 }
 
-size_t SFSFSSFSF_FILE::write(size_t num_bytes, uint8_t *buf)
+size_t SFSFSSFSF_File::write(off_t offset, size_t num_bytes, uint8_t *buf)
 {
-	num_bytes = bound_num_bytes(num_bytes);
+	num_bytes = bound_num_bytes(offset, num_bytes);
 
-	memcpy(cur_ptr, buf, num_bytes);
-	cur_ptr += num_bytes;
-
-	// TODO: save file
+	memcpy(data + offset, buf, num_bytes);
 
 	return num_bytes;
 }
 
 static int sfsfssfsf_open(const char *path, struct fuse_file_info *fi)
 {
-	fi->fh = (uint64_t)(new SFSFSSFSF_File(
-	return -1;
+	try {
+		SFSFSSFSF_File *f = new SFSFSSFSF_File(superblock_file, NULL);
+		fi->fh = (uint64_t)f;
+	}
+	catch (char *e) {
+		print_err(e);
+		return -1;
+	}
+
+	return 0;
 }
 
 static int sfsfssfsf_getattr(const char *path, struct stat *stbuf)
@@ -156,22 +175,44 @@ static int sfsfssfsf_getattr(const char *path, struct stat *stbuf)
 static int sfsfssfsf_read(const char *path, char *buf, size_t size,
                           off_t offset, struct fuse_file_info *fi)
 {
-	return -1;
+	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
+	try {
+		f->read(offset, size, (uint8_t *)buf);
+	}
+	catch (char *e) {
+		print_err(e);
+		return -1;
+	}
+
+	return 0;
 }
 
 static int sfsfssfsf_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                              off_t offset, struct fuse_file_info *fi)
 {
-	return -1;
+	return filler(buf, "file", NULL, 0);
 }
 
 int main(int argc, char *argv[])
 {
-	struct fuse_operations sfsfssfsf_ops;
-	sfsfssfsf_ops.getattr = sfsfssfsf_getattr;
-	sfsfssfsf_ops.open = sfsfssfsf_open;
-	sfsfssfsf_ops.read = sfsfssfsf_read;
-	sfsfssfsf_ops.readdir = sfsfssfsf_readdir;
+	struct fuse_operations ops;
+	ops.getattr = sfsfssfsf_getattr;
+	ops.open = sfsfssfsf_open;
+	ops.read = sfsfssfsf_read;
+	ops.readdir = sfsfssfsf_readdir;
 
-	return fuse_main(argc, argv, &sfsfssfsf_ops, NULL);
+	if (argc < 2) {
+		fprintf(stderr, "Usage: %s location fs-args...", argv[0]);
+		return 1;
+	}
+
+	superblock_file = argv[1];
+	char **argv_new = new char *[argc - 1];
+	argv_new[0] = argv[0];
+	memcpy(argv_new + 1, argv + 2, argc - 2);
+
+	int res = fuse_main(argc, argv_new, &ops, NULL);
+
+	delete argv_new;
+	return res;
 }
