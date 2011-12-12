@@ -1,8 +1,8 @@
 #ifndef LIB_AVCODEC
 extern "C" {
 	//libavcodec
-	#include <avcodec.h>
-	#include <avformat.h>
+	#include <libavcodec/avcodec.h>
+	#include <libavformat/avformat.h>
 }
 #endif // LIB_AVCODEC
 

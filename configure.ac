@@ -17,9 +17,22 @@ AC_CHECK_PROG([FFMPEG], [ffmpeg], [ffmpeg])
 AC_ARG_VAR([FFMPEG], [ffmpeg to use])
 
 # Checks for libraries.
+AS_IF([ test ! -d ./resources/boost], [echo "Unpacking boost (1st time use)..."
+ 	unzip -q resources/tarballs/boost_1_48_0.zip -d resources
+	mv resources/boost_1_48_0 resources/boost])
+#if [ ! -d ./resources/boost ]; then
+#	pushd `dirname $0`
+#	echo "Unpacking boost (1st time use)..."
+#	unzip -q resources/tarballs/boost_1_48_0.zip -d resources
+#	mv resources/boost_1_48_0 resources/boost
+#	popd
+#fi
+
+
 PKG_CHECK_MODULES([fuse], [fuse])
-# PKG_CHECK_MODULES([libavcodec], libavcodec)
-# PKG_CHECK_MODULES([libavformat], libavformat)
+
+PKG_CHECK_MODULES([libavcodec], [libavcodec])
+PKG_CHECK_MODULES([libavformat], [libavformat])
 
 # Checks for header files.
 AC_CHECK_HEADERS([endian.h])

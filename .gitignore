@@ -15,3 +15,4 @@ ffmpeg
 *.swp
 config.h
 stamp-h1
+.DS_Store
