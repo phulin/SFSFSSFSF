@@ -2,6 +2,7 @@
 
 void pstat_write(struct stat *s, struct pstat *ps)
 {
+	ps->magic = SFSFSSFSF_MAGIC;
 	ps->pst_mode = s->st_mode;
 	ps->pst_size = s->st_size;
 	ps->pst_atime = s->st_atime;

@@ -17,7 +17,7 @@
 
 // number of 16-bit ints in a chunk
 // note: this MUST be larger than sizeof(pstat)
-#define CHUNK 4096
+#define SFSFSSFSF_CHUNK 4096
 // maximum command length
 #define COMMAND_LEN 8192
 // storage density, in bits per sample
@@ -47,7 +47,7 @@ void usage(char *argv0)
 }
 
 // decode up to maxbits bits into decode_buf
-// precondition: maxbits <= 8 * CHUNK
+// precondition: maxbits <= 8 * SFSFSSFSF_CHUNK
 // bit_index is constant across calls!
 // this means you can only decode one stream with this function.
 // returns number of _BITS_ decoded.
@@ -56,7 +56,7 @@ static size_t decode_bits(FILE *pipein, uint8_t *decode_buf, size_t maxbits)
 	size_t num_read, bits_read = 0;
 	uint8_t *decode_ptr = decode_buf;
 	int i;
-	static uint16_t pcm_buf[8 * CHUNK];
+	static uint16_t pcm_buf[8 * SFSFSSFSF_CHUNK];
 	static int bit_index = 0;
 	static bool first_time = true;
 
@@ -89,7 +89,7 @@ static size_t decode_bits(FILE *pipein, uint8_t *decode_buf, size_t maxbits)
 
 static void decode(FILE *pipein, char *filename)
 {
-	uint8_t decode_buf[CHUNK + sizeof(struct pstat)], *decode_ptr = decode_buf;
+	uint8_t decode_buf[SFSFSSFSF_CHUNK + sizeof(struct pstat)], *decode_ptr = decode_buf;
 	FILE *f;
 	size_t total_bits_read = 0, total_bits_written = 0;
 	size_t pstat_bits = 8 * sizeof(struct pstat);
@@ -110,6 +110,8 @@ static void decode(FILE *pipein, char *filename)
 	while (total_bits_read < pstat_bits) {
 		total_bits_read += decode_bits(pipein, decode_ptr + (total_bits_read / 8), pstat_bits);
 	}
+	if (pfi->magic != SFSFSSFSF_MAGIC) err("Not an SFSFSSFSF");
+
 	file_bits = 8 * pfi->pst_size;
 
 	// now we start decoding for real
@@ -138,7 +140,7 @@ static void decode(FILE *pipein, char *filename)
 		// move partially-decoded byte to right place.
 		decode_ptr[0] = decode_ptr[bytes_written];
 		// and decode more bits
-		bits_read = decode_bits(pipein, decode_ptr, 8 * CHUNK);
+		bits_read = decode_bits(pipein, decode_ptr, 8 * SFSFSSFSF_CHUNK);
 	}
 }
 
@@ -146,8 +148,8 @@ static void encode(FILE *pipein, char *location, char *filename)
 {
 	int bit_index = 0;
 	bool still_encoding = true;
-	uint16_t pcm_buf[CHUNK];
-	uint8_t encode_buf[CHUNK], *encode_ptr = encode_buf;
+	uint16_t pcm_buf[SFSFSSFSF_CHUNK];
+	uint8_t encode_buf[SFSFSSFSF_CHUNK], *encode_ptr = encode_buf;
 	FILE *f, *pipeout, *debug_f; // debug
 	size_t num_read, num_encode;
 	struct stat fi;
@@ -179,7 +181,7 @@ static void encode(FILE *pipein, char *location, char *filename)
 		int i;
 		size_t num_written;
 
-		num_read = fread(pcm_buf, 2, CHUNK, pipein);
+		num_read = fread(pcm_buf, 2, SFSFSSFSF_CHUNK, pipein);
 		if (num_read == 0) err("Pipe error on read");
 
 		for (i = 0; i < num_read; i++) {
@@ -190,7 +192,7 @@ static void encode(FILE *pipein, char *location, char *filename)
 			// need more data to encode
 			if (encode_ptr - encode_buf >= num_encode) {
 				encode_ptr = encode_buf;
-				num_encode = fread(encode_buf, 1, CHUNK, f);
+				num_encode = fread(encode_buf, 1, SFSFSSFSF_CHUNK, f);
 				if (num_encode == 0) {
 					still_encoding = false;
 				}

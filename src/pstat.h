@@ -1,6 +1,9 @@
 #include <sys/stat.h>
 #include <stdint.h>
 
+// magic bits to start SFSFSSFSF file
+#define SFSFSSFSF_MAGIC 0xcd77ffd5e4e87258304732053ab92afd
+
 // TODO: Implement endianeness compatibility
 
 // Portable stat struct, although we don't care about the filesystem
@@ -8,6 +11,7 @@
 // make sense across machines.
 
 struct pstat {
+	uint64_t magic;       /* GUID */
 	uint64_t pst_mode;    /* protection */
 	uint64_t pst_size;    /* total size, in bytes */
 	uint64_t pst_atime;   /* time of last access */
