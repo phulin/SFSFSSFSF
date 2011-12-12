@@ -15,3 +15,5 @@ ffmpeg
 *.swp
 config.h
 stamp-h1
+*~
+a.out.dSYM
