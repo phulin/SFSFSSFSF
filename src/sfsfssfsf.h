@@ -14,14 +14,14 @@ using namespace std;
 
 class SFSFSSFSF_File
 {
-	FILE *pipein;
+	char *location; // in what file is it stored?
 	uint8_t *data;
+	uint8_t *cur_ptr;
 	size_t total_bits_read;
-	size_t cur_pos;
 	struct pstat pfi;
 
 public:
-	SFSFSSFSF_File::SFSFSSFSF_File(char *filename, char *mode);
+	SFSFSSFSF_File(char *location, char *mode);
 	size_t read(size_t num_bytes, uint8_t *buf);
 	size_t write(size_t num_bytes, uint8_t *buf);
 

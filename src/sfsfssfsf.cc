@@ -26,7 +26,7 @@
   #define SFSFSSFSF_FORMAT "u16le"
 #endif
 
-#define err(msg) { perror(msg); exit(1); }
+#define err(msg) throw strcat(msg, strcat(": ", strerror(errno)))
 
 // decode up to maxbytes bytes into decode_buf
 // precondition: maxbytes <= SFSFSSFSF_CHUNK
@@ -45,7 +45,7 @@ size_t SFSFSSFSF_File::decode_bits(uint8_t *decode_ptr, size_t maxbytes)
 		samples_read = fread(pcm_buf, 2, maxbits - bits_read, pipein);
 		if (samples_read == 0) break;
 
-		for (int i = 0; i < samples_read; i++) {
+		for (unsigned int i = 0; i < samples_read; i++) {
 			if (bit_index >= 8) {
 				bit_index = 0;
 				decode_ptr++;
@@ -61,55 +61,94 @@ size_t SFSFSSFSF_File::decode_bits(uint8_t *decode_ptr, size_t maxbytes)
 		}
 	}
 
-	if (bits_read % 8 != 0) err("Non-byte-aligned read");
+	if (bits_read % 8 != 0) throw "Non-byte-aligned read";
 	return bits_read / 8;
 }
 
 // TODO: parallelize - important!
+// TODO: support mode
+// TODO: locking mechanism for files
 // decode file, etc.
-SFSFSSFSF_File::SFSFSSFSF_File(char *filename, char *mode)
+SFSFSSFSF_File::SFSFSSFSF_File(char *location, char *mode)
 {
+	char command[COMMAND_LEN];
+	snprintf(command, COMMAND_LEN,
+			 "ffmpeg -i %s -f " SFSFSSFSF_FORMAT " pipe:",
+			 filename);
+
+	pipein = popen(command, "r");
+	if (!pipein) err("Couldn't open ffmpeg");
+
 	size_t total_bytes_read = 0;
 	uint64_t file_bytes = 0;
 
-	struct pstat pst;
-	decode_bits((uint8_t *)&pst, sizeof(struct pstat));
-	if (pst.magic != SFSFSSFSF_MAGIC) err("Not an SFSFSSFSF");
+	decode_bits((uint8_t *)&pfi, sizeof(struct pstat));
+	if (pst.magic != SFSFSSFSF_MAGIC) throw "Not an SFSFSSFSF";
 	file_bytes = pst.pst_size;
 
 	// initialize data; hopefully malloc will be okay with this
 	data = new uint8_t[file_bytes];
-	if (!data) err("Couldn't allocate memory");
-	decode_ptr = data;
+	uint8_t *decode_ptr = data;
 
 	while (!feof(pipein) && (total_bytes_read < file_bytes)) {
 		size_t bytes_read;
 
-		bytes_read = decode_bytes(pipein, decode_ptr, SFSFSSFSF_CHUNK);
-		if (bytes_read == 0) err("Pipe error on read");
+		bytes_read = decode_bits(pipein, decode_ptr, SFSFSSFSF_CHUNK);
+		if (bytes_read == 0) throw "Pipe error on read";
 
 		total_bytes_read += bytes_read;
 		decode_ptr += bytes_read;
 	}
 	// now data has been decoded and loaded into memory
+	pclose(pipein);
+
+	cur_ptr = data;
 }
 
-size_t SFSFSSFSF_FILE::read(size_t num_bytes, uint8_t *buf)
+SFSFSSFSF_File::~SFSFSSFSF_File()
 {
-	return 0;
+	delete data;
+}
+
+// make sure we don't read or write past end of data buf
+static inline size_t SFSFSSFSF_File::bound_num_bytes(size_t num_bytes)
+{
+	size_t bytes_left = data + pfi.pst_size - cur_ptr;
+	if (num_bytes > bytes_left)
+		return bytes_left;
+	else
+		return num_bytes;
+}
+
+size_t SFSFSSFSF_File::read(size_t num_bytes, uint8_t *buf)
+{
+	num_bytes = bound_num_bytes(num_bytes);
+
+	memcpy(buf, cur_ptr, num_bytes);
+	cur_ptr += num_bytes;
+
+	return num_bytes;
 }
 
 size_t SFSFSSFSF_FILE::write(size_t num_bytes, uint8_t *buf)
 {
-	return 0;
-}
+	num_bytes = bound_num_bytes(num_bytes);
 
-static int sfsfssfsf_getattr(const char *path, struct stat *stbuf)
-{
-	return -1;
+	memcpy(cur_ptr, buf, num_bytes);
+	cur_ptr += num_bytes;
+
+	// TODO: save file
+
+	return num_bytes;
 }
 
 static int sfsfssfsf_open(const char *path, struct fuse_file_info *fi)
+{
+	fi->fh = (uint64_t)(new SFSFSSFSF_File(
+	return -1;
+}
+
+static int sfsfssfsf_getattr(const char *path, struct stat *stbuf)
 {
 	return -1;
 }
