@@ -39,7 +39,7 @@ static void print_err(char *e)
 	delete e;
 }
 
-static char *superblock_file;
+static string *superblock_file;
 
 // decode up to maxbytes bytes into decode_buf
 // precondition: maxbytes <= SFSFSSFSF_CHUNK
@@ -82,7 +82,7 @@ size_t SFSFSSFSF_File::decode_bits(FILE *pipein, uint8_t *decode_ptr, size_t max
 // TODO: support mode
 // TODO: locking mechanism for files
 // decode file, etc.
-SFSFSSFSF_File::SFSFSSFSF_File(char *_location, char *mode)
+SFSFSSFSF_File::SFSFSSFSF_File(string _location, char *mode)
 {
 	location = _location;
 
@@ -153,7 +153,7 @@ size_t SFSFSSFSF_File::write(off_t offset, size_t num_bytes, uint8_t *buf)
 	return num_bytes;
 }
 
-static int sfsfssfsf_open(const char *path, struct fuse_file_info *fi)
+static int sfsfssfsf_open(const string path, struct fuse_file_info *fi)
 {
 	try {
 		SFSFSSFSF_File *f = new SFSFSSFSF_File(superblock_file, NULL);
@@ -167,12 +167,12 @@ static int sfsfssfsf_open(const char *path, struct fuse_file_info *fi)
 	return 0;
 }
 
-static int sfsfssfsf_getattr(const char *path, struct stat *stbuf)
+static int sfsfssfsf_getattr(const string path, struct stat *stbuf)
 {
 	return -1;
 }
 
-static int sfsfssfsf_read(const char *path, char *buf, size_t size,
+static int sfsfssfsf_read(const string path, char *buf, size_t size,
                           off_t offset, struct fuse_file_info *fi)
 {
 	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
@@ -187,7 +187,7 @@ static int sfsfssfsf_read(const char *path, char *buf, size_t size,
 	return 0;
 }
 
-static int sfsfssfsf_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+static int sfsfssfsf_readdir(const string path, void *buf, fuse_fill_dir_t filler,
                              off_t offset, struct fuse_file_info *fi)
 {
 	return filler(buf, "file", NULL, 0);
@@ -195,18 +195,25 @@ static int sfsfssfsf_readdir(const char *path, void *buf, fuse_fill_dir_t filler
 
 int main(int argc, char *argv[])
 {
+	vector<string> filenames;
+
+
 	struct fuse_operations ops;
 	ops.getattr = sfsfssfsf_getattr;
 	ops.open = sfsfssfsf_open;
 	ops.read = sfsfssfsf_read;
 	ops.readdir = sfsfssfsf_readdir;
 
-	if (argc < 2) {
-		fprintf(stderr, "Usage: %s location fs-args...", argv[0]);
+	if (argc<2){
+		cerr<<"Usage: "<<argv[0]<<" location fs-args..."<<endl;
 		return 1;
 	}
 
-	superblock_file = argv[1];
+	for(;argc>1;argc--)
+		filenames.insert(filenames.begin(), string(argv[argc-1]));
+
+
+	superblock_file = filenames[0];
 	char **argv_new = new char *[argc - 1];
 	argv_new[0] = argv[0];
 	memcpy(argv_new + 1, argv + 2, argc - 2);
