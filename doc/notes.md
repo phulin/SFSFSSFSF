@@ -23,3 +23,26 @@ ICING:
 
 RESOURCES:
 * http://mij.oltrelinux.com/devel/autoconf-automake/
+* Driver/Fuse/FuseService.cpp of TrueCrypt Source
+
+Main/Unix/Main.cpp
+Core/Unix/CoreUnix.cpp (look for Mount, FuseService)
+Driver/Fuse/FuseService.cpp
+Main/TextUserInterface.cpp (asks for password, keyfile, etc)
+
+
+
+
+
+
+STRUCTURE:
+* afile refers to audiofiles
+* rfile refers to realfiles
+* No symlink/hardlink support--strictly a dumb filesystem
+
+Data:
+	
+
+Encryption ThreadPool:
+	waits for FUSE to send requests (some sort of MPI--consider boost?)
+	
