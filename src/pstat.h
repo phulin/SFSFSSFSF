@@ -2,7 +2,7 @@
 #include <stdint.h>
 
 // magic bits to start SFSFSSFSF file
-#define SFSFSSFSF_MAGIC 0xcd77ffd5e4e87258304732053ab92afd
+#define SFSFSSFSF_MAGIC 0xcd77ffd5e4e87258
 
 // TODO: Implement endianeness compatibility
 

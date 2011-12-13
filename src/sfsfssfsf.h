@@ -4,6 +4,8 @@
 using namespace std;
 #include <cerrno>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include <stdint.h>
 
@@ -14,19 +16,21 @@ using namespace std;
 
 class SFSFSSFSF_File
 {
-	FILE *pipein;
+	char *location; // in what file is it stored?
 	uint8_t *data;
+	uint8_t *cur_ptr;
 	size_t total_bits_read;
-	size_t cur_pos;
 	struct pstat pfi;
 
 public:
-	SFSFSSFSF_File::SFSFSSFSF_File(char *filename, char *mode);
-	size_t read(size_t num_bytes, uint8_t *buf);
-	size_t write(size_t num_bytes, uint8_t *buf);
+	SFSFSSFSF_File(char *, char *);
+	~SFSFSSFSF_File();
+	size_t read(off_t, size_t, uint8_t *);
+	size_t write(off_t, size_t, uint8_t *);
 
 private:
-	size_t decode_bits(uint8_t *decode_ptr, size_t maxbits);
+	size_t decode_bits(FILE *, uint8_t *, size_t);
+	inline size_t bound_num_bytes(off_t, size_t);
 };
 
 #endif
