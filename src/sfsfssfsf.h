@@ -8,19 +8,24 @@ using namespace std;
 #include <cstring>
 
 #include <stdint.h>
+#include <string>
+#include <vector>
 
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
 
 #include <pstat.h>
 
+using namespace std;
+
 class SFSFSSFSF_File
 {
-	char *location; // in what file is it stored?
+	string location; // in what file is it stored?
 	uint8_t *data;
 	uint8_t *cur_ptr;
 	size_t total_bits_read;
 	struct pstat pfi;
+	vector <string> audiofiles;
 
 public:
 	SFSFSSFSF_File(char *, char *);

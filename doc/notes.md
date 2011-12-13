@@ -28,6 +28,7 @@ ICING:
 ** doing it by hash of written (including lower order bits) afile requires ordering of writes of dirfiles, plus it's slow.
 * more than one rfile/afile (tailpacking)
 * more than one afile/rfile (large files)
+* better parsing of the m3u files (strict structure, currently)
 
 RESOURCES:
 ==========

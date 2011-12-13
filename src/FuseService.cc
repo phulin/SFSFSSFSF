@@ -5,17 +5,49 @@
 
 using namespace std;
 
-static string sha256(string path, string hash){
+//discard 4 lowest bits; use remaining static hash to indentify file.
+static string sha256(string path){
+  ostringstream command;
+  uint16_t pcm_buf[SFSFSSFSF_CHUNK];
+  uint16_t bytes_read;
+  int i;
+
+  command << "ffmpeg -i \"" << path << "\" -f "<<SFSFSSFSF_FORMAT<<" pipe:";
+  FILE *pipein = popen(command, 'r');
+  if (!pipein) err("Could not open ffmpeg");
+  decode_bits(pipein, (uint8_t *) &pfi, sizeof(struct pstat));
+
+  fread(pcm_buf,2,SFSFSSFSF_CHUNK,pipein);
+  pclose(pipein);
+
+  for (i=0;i<SFSFSSFSF_CHUNK;i++)
+    bytes_read[i] = pcm_buf[i]>>4;
+
   // TODO: send to Crypt thread for result.
-  
 
 }
 
 // _init()_       starts all threads (called by _fuse_main_), parses M3U playlist for non-superblock files
 static void *fuse_service_init ()
 {
-      // TODO: Start up Encryption Threads
-  MapOfDirFiles
+
+  // TODO: Start up Encryption Threads
+
+  string line;
+  ifstream playlist_file (audiofile_list_file);
+
+  playlist_file.open();
+  while(playlist_file.good()){
+    getline(playlist_file, line);
+    MapOfAllFiles[sha256(line)] = line;
+#ifdef DEBUG
+    cout<<"Playlist file line:"<<line<<endl;
+#endif
+  }
+  playlist_file.close();
+
+    
+  //MapOfDirFiles[key].push_back(filename);
   return NULL;
 }
 // _access()_      do nothing. Assume if we can decrypt, we can access. Maybe better not to implement, in case of readonly? (what's the right answer here?)

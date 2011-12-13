@@ -9,7 +9,11 @@
 
 using namespace std;
 
+//hash->path
+map <string, string> MapOfAllFiles;
+//hash->vector<hash>
 map <string, vector<string> > MapOfDirFiles;
+//hash->int (boolean)
 map <string, int> DirFileDirtyBitmap;
 
 
