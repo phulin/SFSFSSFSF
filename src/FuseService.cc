@@ -45,16 +45,40 @@ static void *fuse_service_init ()
 #endif
   }
   playlist_file.close();
-
-    
+  // TODO: add things to parse in from the superblock;
+  string rootfile, freefile;
+  ifstream SuperBlock(superblock_file);
+  // TODO: ensure the right crypt header length is skipped.
+  SuperBlock.seekg(SB_CRYPT_HDR_LENGTH);
+  SuperBlock >> rootfile >> freefile;
+  MapOfAllPaths['/']=rootfile;
+  string curfreefile = freefile;
+  while(curfreefile != ""){
+    ifstream FreeFile(curfreefile);
+    // TODO: make this list all the freefiles. Single master list, or SLL?
+  }
+  
   //MapOfDirFiles[key].push_back(filename);
   return NULL;
 }
 // _access()_      do nothing. Assume if we can decrypt, we can access. Maybe better not to implement, in case of readonly? (what's the right answer here?)
 
 static int fuse_service_access (const char *path, int mask) {return -E_SUCCESS;}
-    
+
 // _create()_      add to directory special file, and remove from last freefile specialfile in SLL (singly-linked list). change dirfile
+
+static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_info *fi){
+
+  string afile = FreeList.front();
+  FreeList.pop_front();
+  FreeFileBitmap[afile] = 0;
+  
+  MapOf
+
+
+
+  return -E_SUCCESS;
+}
 
 
 // _mkdir()_       Create a new directory special file, add it to the parent directory's special file. change dirfile
