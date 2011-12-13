@@ -76,6 +76,9 @@ In Memory Data:
 Encryption ThreadPool:
 ----------------------
 * waits for FUSE to send requests (some sort of MPI--consider boost?)
+* Requests Handled:
+* compress+encrypt (path, buf)->datastream (for encoding into alac)
+
 
 FUSE Thread:
 ------------
@@ -85,11 +88,12 @@ FUSE Thread:
 
 SFSFSSFSF Functions:
 --------------------
-* _path_exists()_     Check if path (dir or rfile) exists. Returns *-E_SUCCESS*/*E_SUCCESS* (0) if okay, otherwise *-ENOENT*
+* _path_exists()_           Check if path (dir or rfile) exists. Returns *-E_SUCCESS*/*E_SUCCESS* (0) if okay, otherwise *-ENOENT*
+* _encode_datastream()_     Take (apath, stream) (from encryption thread), and run it through ffmpeg to disk.
 
 FUSE Functions:
 ---------------
-* _init()_	      starts all threads (called by _fuse_main_), parses M3U playlist for non-superblock files
+* _init()_       starts all threads (called by _fuse_main_), parses M3U playlist for non-superblock files
 * _access()_      do nothing. Assume if we can decrypt, we can access. Maybe better not to implement, in case of readonly? (what's the right answer here?)
 
     return 0;
@@ -108,7 +112,7 @@ FUSE Functions:
     if( (err = path_exists(path)) ) return err;
 
 * _open()_        returns *-EACCES*, but not really. returns _path_exists()_
-* _read()_        (following maintains argument order) from rfile at *path*, fill *buf*, with *size* bytes, starting from *offset* to *offset*+size.
+* _read()_        (following maintains argument order) from rfile at *path*, fill *buf*, with *size* bytes, starting from *offset* to *offset*+size. Read directly from dirty cache if available.
 
     if offset>filesize return 0;
     if offset+size>filesize return filesize-offset;
