@@ -187,10 +187,15 @@ static int sfsfssfsf_read(const string path, char *buf, size_t size,
 	return 0;
 }
 
-static int sfsfssfsf_readdir(const string path, void *buf, fuse_fill_dir_t filler,
+// TODO: implement for real
+static int sfsfssfsf_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                              off_t offset, struct fuse_file_info *fi)
 {
-	return filler(buf, "file", NULL, 0);
+	filler(buf, ".", NULL, 0);
+	filler(buf, "..", NULL, 0);
+	filler(buf, "file", NULL, 0);
+
+	return 0;
 }
 
 int main(int argc, char *argv[])
@@ -204,22 +209,20 @@ int main(int argc, char *argv[])
 	ops.read = sfsfssfsf_read;
 	ops.readdir = sfsfssfsf_readdir;
 
-	if (argc<2){
-		cerr<<"Usage: "<<argv[0]<<" location fs-args..."<<endl;
+	if (argc < 3) {
+		fprintf(stderr, "Usage: %s location fs-args...", argv[0]);
 		return 1;
 	}
 
-	for(;argc>1;argc--)
-		filenames.insert(filenames.begin(), string(argv[argc-1]));
+	struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
+	for (int i = 0; i < argc; i++) {
+		if (i == 1)
+			superblock_file = argv[i];
+		else
+			fuse_opt_add_arg(&args, argv[i]);
+	}
 
+	int res = fuse_main(args.argc, args.argv, &ops, NULL);
 
-	superblock_file = filenames[0];
-	char **argv_new = new char *[argc - 1];
-	argv_new[0] = argv[0];
-	memcpy(argv_new + 1, argv + 2, argc - 2);
-
-	int res = fuse_main(argc, argv_new, &ops, NULL);
-
-	delete argv_new;
 	return res;
 }
