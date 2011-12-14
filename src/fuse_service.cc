@@ -40,7 +40,7 @@ static string sha256(string line)
 }
 
 // works on file, not string
-static string sha256sum(string path){
+string sha256sum(string path){
 	
 	debug_print("In sha256");
 	ostringstream command;
@@ -71,13 +71,15 @@ static string sha256sum(string path){
 }
 
 
-static void parse_superblock(string path){
+void parse_superblock(string path, bool write_back){
 	// TODO: add things to parse in from the superblock;
-	char* buf;
+	// TODO: optimize with direct data
+	char* buf = new char[SFSFSSFSF_CHUNK * 100];;
 	stringstream SuperBlock (stringstream::in | stringstream::out);
+	SFSFSSFSF_File *f;
 
 	try {
-		SFSFSSFSF_File *f = new SFSFSSFSF_File(superblock_file, NULL);
+		f = new SFSFSSFSF_File(superblock_file, string(""), write_back);
 		
 		f->read(SB_CRYPT_HDR_LENGTH, SFSFSSFSF_CHUNK*100, (uint8_t *)buf);
 		debug_print("2\n");
@@ -88,7 +90,7 @@ static void parse_superblock(string path){
 	}
 	
 	SuperBlock << buf;
-	
+	debug_print("parse 1\n");	
 	// TODO: decrypt rest of superblock before trying to use it.
 	int i, key_rpath_map_size, free_list_size;
 	string tmp1, tmp2;
@@ -104,7 +106,11 @@ static void parse_superblock(string path){
 		SuperBlock>>tmp1;
 		free_list.push_front(tmp1);
 	}
-	
+	debug_print("parse 2\n");
+	if (write_back)
+		f->fsync();
+	delete buf;
+	delete f;
 
 #ifdef DEBUG
 	cout<<"loaded: "<<key_apath_map.size()<<" files"<<endl;

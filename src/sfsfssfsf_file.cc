@@ -41,34 +41,29 @@ size_t SFSFSSFSF::decode_bits(FILE *pipein, uint8_t *decode_ptr, size_t maxbytes
 // TODO: support mode
 // TODO: locking mechanism for files
 // decode file, etc.
-SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode)
+SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode, bool force_overwrite)
 {
 	debug_print("in SFSFSSFSF_File(); setting location");
 	location = _location;
-
-	bool exists;
-	ifstream foo(location.c_str());
-	exists = (bool)foo;
 
 	size_t total_bytes_read = 0;
 	uint64_t file_bytes = 0;
 	uint8_t *decode_ptr;
 	FILE *pipein = NULL;
-	if (exists) {
-		char command[COMMAND_LEN];
-		snprintf(command, COMMAND_LEN,
-				 "ffmpeg -i %s -f u16le pipe:",
-				 location.c_str());
+	
+	char command[COMMAND_LEN];
+	snprintf(command, COMMAND_LEN,
+			 "ffmpeg -i %s -f u16le pipe:",
+			 location.c_str());
 
-		debug_print("in SFSFSSFSF_File(); about to open ffmpeg");
-		pipein = popen(command, "r");
-		if (!pipein) err("Couldn't open ffmpeg");
-		debug_print("in SFSFSSFSF_File(); setting location");
+	debug_print("in SFSFSSFSF_File(); about to open ffmpeg");
+	pipein = popen(command, "r");
+	if (!pipein) err("Couldn't open ffmpeg");
+	debug_print("in SFSFSSFSF_File(); setting location");
 
-		decode_bits(pipein, (uint8_t *)&pfi, sizeof(struct pstat));
-		if (pfi.magic != SFSFSSFSF_MAGIC) throw "Not an SFSFSSFSF";
-	}
-	else {
+	decode_bits(pipein, (uint8_t *)&pfi, sizeof(struct pstat));
+	// create a new file
+	if (pfi.magic != SFSFSSFSF_MAGIC || force_overwrite) {
 		pfi.magic = SFSFSSFSF_MAGIC;
 		pfi.pst_mode = S_IFREG | 0777;
 		pfi.pst_size = 0;
@@ -79,12 +74,14 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode)
 	
 	file_bytes = pfi.pst_size;
 	// hopefully malloc will be okay with this
-	data = new uint8_t[file_bytes];
+	// FIXME: WTF?
+	data = new uint8_t[4194304];
+	decode_ptr = data;
 
 	while (!feof(pipein) && (total_bytes_read < file_bytes)) {
 		size_t bytes_read;
 
-		bytes_read = ::decode_bits(pipein, decode_ptr, SFSFSSFSF_CHUNK);
+		bytes_read = decode_bits(pipein, decode_ptr, SFSFSSFSF_CHUNK);
 		if (bytes_read == 0) { delete data; throw "Pipe error on read"; }
 
 		total_bytes_read += bytes_read;
@@ -120,23 +117,19 @@ size_t SFSFSSFSF_File::read(off_t offset, size_t num_bytes, uint8_t *buf)
 
 size_t SFSFSSFSF_File::write(off_t offset, size_t num_bytes, uint8_t *buf)
 {
-	num_bytes = bound_num_bytes(offset, num_bytes);
-
+	if (offset + num_bytes > pfi.pst_size) {
+		pfi.pst_size = offset + num_bytes;
+	}
+	
 	memcpy(data + offset, buf, num_bytes);
 
 	return num_bytes;
 }
 
-size_t SFSFSSFSF_File::direct_data(uint8_t **buf_ptr)
-{
-	*buf_ptr = data;
-	return pfi.pst_size;
-}
-
 // returns number of bytes encoded
 // num_encode: bytes to encode
 // precondition: num_bytes <= SFSFSSFSF_CHUNK
-size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, size_t num_bytes)
+size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, size_t num_bytes, bool still_encoding)
 {
 	int bit_index = 0;
 	static uint16_t pcm_buf[8 * SFSFSSFSF_CHUNK];
@@ -159,7 +152,7 @@ size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, 
 			}
 
 			// only encode in things where it's (basically) invisible
-			if (SFSFSSFSF_ENCODABLE(pcm_buf[i])) {
+			if (SFSFSSFSF_ENCODABLE(pcm_buf[i]) && still_encoding) {
 				// pick out and set a bit
 				uint16_t mask = 1 << bit_index;
 				pcm_buf[i] = (pcm_buf[i] & ~(0x1)) | ((*encode_ptr & mask) >> bit_index);
@@ -199,8 +192,9 @@ void SFSFSSFSF_File::fsync()
 	if (num_encoded == 0) throw "Couldn't encode header";
 
 	uint8_t *encode_ptr = data;
-	while (num_encoded > 0 && (size_t)(encode_ptr - data) < pfi.pst_size) {
-		num_encoded = encode_bits(pipein, pipeout, encode_ptr, SFSFSSFSF_CHUNK);
+	while (num_encoded > 0) {
+		num_encoded = encode_bits(pipein, pipeout, encode_ptr, SFSFSSFSF_CHUNK, 
+								  (size_t)(encode_ptr - data) < pfi.pst_size);
 		encode_ptr += num_encoded;
 	}
 

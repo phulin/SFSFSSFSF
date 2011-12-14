@@ -56,7 +56,7 @@ class SFSFSSFSF_File
 	bool is_superblock;
 
 public:
-	SFSFSSFSF_File(string, string);
+	SFSFSSFSF_File(string, string, bool force_overwrite = false);
 	~SFSFSSFSF_File();
 	size_t read(off_t, size_t, uint8_t *);
 	size_t write(off_t, size_t, uint8_t *);
@@ -68,7 +68,7 @@ private:
 
 namespace SFSFSSFSF {
 	size_t decode_bits(FILE *, uint8_t *, size_t);
-	size_t encode_bits(FILE *, FILE *, uint8_t *, size_t);
+	size_t encode_bits(FILE *, FILE *, uint8_t *, size_t, bool = true);
 	FILE *pipein_from(string);
 	FILE *pipeout_to(string);
 }
