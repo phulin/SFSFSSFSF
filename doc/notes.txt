@@ -1,6 +1,7 @@
 FIRST STEPS:
 * Decide on our favorite lossless format (codec+container), where favorite means easiest to work with.
 * Look at libffmpeg for extracting shit (how ubiquitous is it, on systems where people listen to audio files?)
+  * use Python ctypes
 * Figure out how to extract an ALAC stream from an MPEG-4 part 14 container
 * extract the low-order bits from several ALAC files and run them through ent to see if they are random (as we expect)
 * store a short text file in the low-order bits of an ALAC file (no encryption)
