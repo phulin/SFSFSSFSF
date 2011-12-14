@@ -1,11 +1,11 @@
-#include "crypto_scrypt.h"
-#inculde "crypto_aesctr.h"
-#include "sha256.h"
-/* #include "sysendian.h" */
-
 #include <openssl/aes.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+#include "crypto_scrypt.h"
+#include "crypto_aesctr.h"
+#include "sha256.h"
 
 /* TODO: zero out sensitive data */
 
@@ -14,11 +14,20 @@ typedef struct{
   struct crypto_aesctr* aes_state;
   HMAC_SHA256_CTX hctx;
   size_t buflen;
-  char* buf;
+  unsigned char* buf;
 } c_state;
 
+int c_keyderiv(const unsigned char * passwd, size_t passwdlen, 
+	       const unsigned char * salt, size_t saltlen,
+	       unsigned char * buf, size_t buflen){
+  return (crypto_scrypt(passwd, passwdlen,
+			salt, saltlen,
+			65536, 8, 5,
+			buf, buflen));
+}
+
 /* key must be 64 bytes long */
-c_state* c_initialize(const char* key, size_t sec_size){
+c_state* c_initialize(const unsigned char* key, size_t sec_size){
   FILE* random;
   c_state* state;
   uint64_t iv;
@@ -35,25 +44,20 @@ c_state* c_initialize(const char* key, size_t sec_size){
     goto err1;
   if((state->aes_key = malloc(sizeof(AES_KEY))) == NULL)
     goto err2;
-  if((state->mac_key = malloc(sizeof(char)*32)) == NULL)
-    goto err3;
-
 
   if(!AES_set_encrypt_key(key, 256, state->aes_key))
-    goto err4;
+    goto err3;
   
   if((state->aes_state = crypto_aesctr_init(state->aes_key, iv)) == NULL)
-    goto err4;
+    goto err3;
 
-  HMAC_SHA256_Init(&(state->hctx), &key[32] 32);
+  HMAC_SHA256_Init(&(state->hctx), &key[32], 32);
   
   state->buflen = 0;
   state->buf = NULL;
   
   return(state);
   
- err4:
-  free(state->mac_key);
  err3:
   free(state->aes_key);
  err2:
@@ -64,14 +68,14 @@ c_state* c_initialize(const char* key, size_t sec_size){
   return(NULL);
 }
 
-size_t c_encrypt(c_state* state, char* outbuf, size_t outbuflen, const char* inbuf, size_t inbuflen){
+size_t c_encrypt(c_state* state, unsigned char* outbuf, size_t outbuflen, const unsigned char* inbuf, size_t inbuflen){
   if(state->buflen > 0){ 
     /* we have unprocessed data */
-    char* buf = state->buf;
+    unsigned char* buf = state->buf;
     state->buf = NULL;
     size_t buflen = state->buflen;
     state->buflen = 0;
-    size_t enc_count = c_encrypt(state, outbuf, outbuflen, state->buf, buflen);
+    size_t enc_count = c_encrypt(state, outbuf, outbuflen, buf, buflen);
 
     size_t newlen = buflen - enc_count;
     if(newlen != 0){
@@ -80,30 +84,31 @@ size_t c_encrypt(c_state* state, char* outbuf, size_t outbuflen, const char* inb
       state->buf = NULL;
       state->buflen = 0;
 
-      char* newbuf;
-      if((newbuf = malloc(sizeof(char)*(newlen + inbuflen))) == NULL)
+      unsigned char* newbuf;
+      if((newbuf = malloc(sizeof(unsigned char)*(newlen + inbuflen))) == NULL)
 	return(0);
 
-      memcpy(newbuf, &(state->buf[enc_count]), newlen);
+      memcpy(newbuf, &(buf[enc_count]), newlen);
       if(inbuflen > 0)
 	memcpy(&newbuf[newlen], inbuf, inbuflen);
 
-      free(state->buf);
+      free(buf);
+      buf = NULL;
       state->buf = newbuf;
       state->buflen = (newlen + inbuflen);
       return(enc_count);
     }else{
       /* processed all unprocessed data, now try to process freshly supplied data */
-      free(state->buf);
-      state->buf = NULL;
+      free(buf);
+      buf = NULL;
       return(c_encrypt(state,&outbuf[enc_count],newlen,inbuf,inbuflen));
     }
   }else{
     /* no unprocessed data */
     size_t minlen = (outbuflen < inbuflen) ? outbuflen : inbuflen;
     if(inbuflen > minlen){
-      char* newbuf;
-      if((newbuf = malloc(sizeof(char) * (infbuflen - minlen))) == NULL)
+      unsigned char* newbuf;
+      if((newbuf = malloc(sizeof(unsigned char) * (inbuflen - minlen))) == NULL)
 	return(0);
       memcpy(newbuf,&inbuf[minlen],inbuflen-minlen);
       state->buf = newbuf;
@@ -116,14 +121,14 @@ size_t c_encrypt(c_state* state, char* outbuf, size_t outbuflen, const char* inb
   }
 }
 
-size_t c_decrypt(c_state* state, char* outbuf, size_t outbuflen, const char* inbuf, size_t inbuflen){
+size_t c_decrypt(c_state* state, unsigned char* outbuf, size_t outbuflen, const unsigned char* inbuf, size_t inbuflen){
   if(state->buflen > 0){ 
     /* we have unprocessed data */
-    char* buf = state->buf;
+    unsigned char* buf = state->buf;
     state->buf = NULL;
     size_t buflen = state->buflen;
     state->buflen = 0;
-    size_t enc_count = c_decrypt(state, outbuf, outbuflen, state->buf, buflen);
+    size_t dec_count = c_decrypt(state, outbuf, outbuflen, buf, buflen);
 
     size_t newlen = buflen - dec_count;
     if(newlen != 0){
@@ -132,30 +137,31 @@ size_t c_decrypt(c_state* state, char* outbuf, size_t outbuflen, const char* inb
       state->buf = NULL;
       state->buflen = 0;
 
-      char* newbuf;
-      if((newbuf = malloc(sizeof(char)*(newlen + inbuflen))) == NULL)
+      unsigned char* newbuf;
+      if((newbuf = malloc(sizeof(unsigned char)*(newlen + inbuflen))) == NULL)
 	return(0);
 
-      memcpy(newbuf, &(state->buf[enc_count]), newlen);
+      memcpy(newbuf, &(buf[dec_count]), newlen);
       if(inbuflen > 0)
 	memcpy(&newbuf[newlen], inbuf, inbuflen);
 
-      free(state->buf);
+      free(buf);
+      buf = NULL;
       state->buf = newbuf;
       state->buflen = (newlen + inbuflen);
-      return(enc_count);
+      return(dec_count);
     }else{
       /* processed all unprocessed data, now try to process freshly supplied data */
-      free(state->buf);
-      state->buf = NULL;
-      return(c_decrypt(state,&outbuf[enc_count],newlen,inbuf,inbuflen));
+      free(buf);
+      buf = NULL;
+      return(c_decrypt(state,&outbuf[dec_count],newlen,inbuf,inbuflen));
     }
   }else{
     /* no unprocessed data */
     size_t minlen = (outbuflen < inbuflen) ? outbuflen : inbuflen;
     if(inbuflen > minlen){
-      char* newbuf;
-      if((newbuf = malloc(sizeof(char) * (infbuflen - minlen))) == NULL)
+      unsigned char* newbuf;
+      if((newbuf = malloc(sizeof(unsigned char) * (inbuflen - minlen))) == NULL)
 	return(0);
       memcpy(newbuf,&inbuf[minlen],inbuflen-minlen);
       state->buf = newbuf;
@@ -168,7 +174,7 @@ size_t c_decrypt(c_state* state, char* outbuf, size_t outbuflen, const char* inb
   }
 }
 
-char c_encrypt_finalize(c_state* state, char* outbuf, size_t outbuflen){
+signed char c_encrypt_finalize(c_state* state, unsigned char* outbuf, size_t outbuflen){
   if(state->buflen > 0){
     size_t offset = c_encrypt(state, outbuf, outbuflen, NULL, 0);
     if(state->buflen > 0){
@@ -185,14 +191,14 @@ char c_encrypt_finalize(c_state* state, char* outbuf, size_t outbuflen){
   }
 }
 
-char c_decrypt_finalize(c_state* state, char* inbuf, size_t inbuflen){
+signed char c_decrypt_finalize(c_state* state, unsigned char* inbuf, size_t inbuflen){
   if(state->buflen > 0){
     HMAC_SHA256_Update(&(state->hctx), state->buf, state->buflen);
     free(state->buf);
     state->buf = NULL;
     state->buflen = 0;
   }
-  char hbuf[32];
+  unsigned char hbuf[32];
   if(inbuflen > 32){
     HMAC_SHA256_Update(&(state->hctx), inbuf, inbuflen - 32);
     HMAC_SHA256_Final(hbuf, &(state->hctx));
@@ -209,7 +215,6 @@ char c_decrypt_finalize(c_state* state, char* inbuf, size_t inbuflen){
 
 void c_free(c_state* state){
   crypto_aesctr_free(state->aes_state);
-  free(state->mac_key);
   free(state->aes_key);
   free(state);
 }

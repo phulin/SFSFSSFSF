@@ -29,19 +29,6 @@
 #ifndef _SYSENDIAN_H_
 #define _SYSENDIAN_H_
 
-#include "scrypt_platform.h"
-
-/* If we don't have be64enc, the <sys/endian.h> we have isn't usable. */
-#if !HAVE_DECL_BE64ENC
-#undef HAVE_SYS_ENDIAN_H
-#endif
-
-#ifdef HAVE_SYS_ENDIAN_H
-
-#include <sys/endian.h>
-
-#else
-
 #include <stdint.h>
 
 static inline uint32_t
@@ -135,6 +122,5 @@ le64enc(void *pp, uint64_t x)
 	p[6] = (x >> 48) & 0xff;
 	p[7] = (x >> 56) & 0xff;
 }
-#endif /* !HAVE_SYS_ENDIAN_H */
 
 #endif /* !_SYSENDIAN_H_ */

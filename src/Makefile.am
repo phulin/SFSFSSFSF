@@ -1,13 +1,13 @@
 # what flags you want to pass to the C compiler & linker
-AM_CFLAGS = --pedantic -Wall -std=c99 -O2 @fuse_CFLAGS@
-AM_CXXFLAGS = --pedantic -Wall -O2 @fuse_CFLAGS@
+AM_CFLAGS = --pedantic -Wall -std=c99 -O2 @fuse_CFLAGS@ @libssl_CFLAGS@
+AM_CXXFLAGS = --pedantic -Wall -O2 @fuse_CFLAGS@ @libssl_CFLAGS@
 
 # this lists the binaries to produce, the (non-PHONY, binary) targets in
 # the previous manual Makefile
-bin_PROGRAMS = hello sfsfssfsf flip_lowbits flip_lowbits_cpp #foo
+bin_PROGRAMS = hello sfsfssfsf flip_lowbits #foo
 
-sfsfssfsf_SOURCES = sfsfssfsf.cc sfsfssfsf.h pstat.c pstat.h sfsfssfsf_file.cc
-sfsfssfsf_LDADD = @fuse_LIBS@
+sfsfssfsf_SOURCES = sfsfssfsf.cc sfsfssfsf.h pstat.c pstat.h sfsfssfsf_file.cc crypto_aesctr.c crypto_aesctr.h crypto_scrypt-ref.c crypto_scrypt.h crypto_wrapper.c sha256.c sha256.h sysendian.h
+sfsfssfsf_LDADD = @fuse_LIBS@ @libssl_LIBS@
 
 flip_lowbits_SOURCES = flip_lowbits.c pstat.c pstat.h
 

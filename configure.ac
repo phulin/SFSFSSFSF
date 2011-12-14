@@ -34,6 +34,8 @@ PKG_CHECK_MODULES([fuse], [fuse])
 PKG_CHECK_MODULES([libavcodec], [libavcodec])
 PKG_CHECK_MODULES([libavformat], [libavformat])
 
+PKG_CHECK_MODULES([libssl], [libssl])
+
 # Checks for header files.
 AC_CHECK_HEADERS([endian.h])
 
