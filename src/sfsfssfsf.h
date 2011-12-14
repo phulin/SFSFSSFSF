@@ -69,6 +69,7 @@ private:
 
 size_t decode_bits(FILE *, uint8_t *, size_t);
 
+
 // this is a hack but whatever
 static void err(const char *msg)
 {

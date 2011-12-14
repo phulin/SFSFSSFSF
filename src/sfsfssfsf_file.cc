@@ -46,25 +46,40 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode)
 	debug_print("in SFSFSSFSF_File(); setting location");
 	location = _location;
 
-	char command[COMMAND_LEN];
-	snprintf(command, COMMAND_LEN,
-			 "ffmpeg -i %s -f u16le pipe:",
-			 location.c_str());
+	bool exists;
+	ifstream foo(location.c_str());
+	exists = (bool)foo;
 
-	debug_print("in SFSFSSFSF_File(); about to open ffmpeg");
-	FILE *pipein = popen(command, "r");
-	if (!pipein) err("Couldn't open ffmpeg");
-	debug_print("in SFSFSSFSF_File(); setting location");
 	size_t total_bytes_read = 0;
 	uint64_t file_bytes = 0;
+	uint8_t *decode_ptr;
+	FILE *pipein = NULL;
+	if (exists) {
+		char command[COMMAND_LEN];
+		snprintf(command, COMMAND_LEN,
+				 "ffmpeg -i %s -f u16le pipe:",
+				 location.c_str());
 
-	::decode_bits(pipein, (uint8_t *)&pfi, sizeof(struct pstat));
-	if (pfi.magic != SFSFSSFSF_MAGIC) throw "Not an SFSFSSFSF";
+		debug_print("in SFSFSSFSF_File(); about to open ffmpeg");
+		pipein = popen(command, "r");
+		if (!pipein) err("Couldn't open ffmpeg");
+		debug_print("in SFSFSSFSF_File(); setting location");
+
+		::decode_bits(pipein, (uint8_t *)&pfi, sizeof(struct pstat));
+		if (pfi.magic != SFSFSSFSF_MAGIC) throw "Not an SFSFSSFSF";
+	}
+	else {
+		pfi.magic = SFSFSSFSF_MAGIC
+		pfi.pst_mode = S_IFREG | 0777;
+		pfi.pst_size = 0;
+		pfi.pst_atime = (uint64_t)time(NULL);
+		pfi.pst_ctime = pfi.pst_atime;
+		pfi.pst_mtime = pfi.pst_atime;
+	}
+	
 	file_bytes = pfi.pst_size;
-
-	// initialize data; hopefully malloc will be okay with this
+	// hopefully malloc will be okay with this
 	data = new uint8_t[file_bytes];
-	uint8_t *decode_ptr = data;
 
 	while (!feof(pipein) && (total_bytes_read < file_bytes)) {
 		size_t bytes_read;
@@ -76,9 +91,7 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode)
 		decode_ptr += bytes_read;
 	}
 	// now data has been decoded and loaded into memory
-	pclose(pipein);
-
-	cur_ptr = data;
+	if (pipein) pclose(pipein);
 }
 
 SFSFSSFSF_File::~SFSFSSFSF_File()
@@ -180,11 +193,10 @@ void SFSFSSFSF_File::fsync()
 	if (num_encoded == 0) throw "Couldn't encode header";
 
 	uint8_t *encode_ptr = data;
-	do {
+	while (num_encoded > 0 && encode_ptr - data < pfi.pst_size) {
 		num_encoded = encode_bits(pipein, pipeout, encode_ptr, SFSFSSFSF_CHUNK);
 		encode_ptr += num_encoded;
-	} while (num_encoded != 0);
-	if ((size_t)(encode_ptr - data) < pfi.pst_size) throw "Encoding failed";
+	}
 
 	pclose(pipeout);
 

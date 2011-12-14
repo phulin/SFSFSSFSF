@@ -3,19 +3,12 @@
 
 using namespace std;
 
-//hash->apath
-map <string, string> MapOfAllFiles;
-//rpath->hash
-map <string, string> MapOfAllPaths;
-//hash->vector<hash>
-map <string, vector<string> > MapOfDirFiles;
-////hash->vector<hash>
-//map <string, vector<string> > MapOfFreeFiles;
-//hash->int (boolean)
-map <string, int> FreeFileBitmap;
-list <string> FreeList;
-//hash->int (boolean)
-map <string, int> DirFileDirtyBitmap;
+// list of free files
+list <string> free_list;
+// hash->rpath
+map <string, string> key_rpath_map;
+// hash->apath
+map <string, string> key_apath_map;
 
 string audiofile_list_file;
 string superblock_file;
@@ -55,7 +48,7 @@ static void *fuse_service_init (struct fuse_conn_info *conn)
 	
 	while(playlist_file.good()){
 		getline(playlist_file, line);
-		MapOfAllFiles[sha256(line)] = line;
+		key_apath_map[sha256(line)] = line;
 #ifdef DEBUG
 		cout<<"Playlist file line:"<<line<<endl;
 #endif
@@ -89,9 +82,12 @@ static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_
 {
 
 	debug_print("In create()\n");
-	string afile = FreeList.front();
-	FreeList.pop_front();
-	FreeFileBitmap[afile] = 0;
+	string afile = free_list.front();
+	free_list.pop_front();
+	string key = sha256(afile);
+	SFSFSSFSF_File free_file(afile, NULL);
+	free_file.fsync();
+	key_rpath_map[key] = string(path);
 	
 	return -E_SUCCESS;
 }
