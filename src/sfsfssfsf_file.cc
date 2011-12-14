@@ -62,8 +62,12 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode, bool force_overwri
 	debug_print("in SFSFSSFSF_File(); setting location");
 
 	decode_bits(pipein, (uint8_t *)&pfi, sizeof(struct pstat));
+	// hopefully malloc will be okay with this
+	// FIXME: WTF?
+	data = new uint8_t[4194304];
+	decode_ptr = data;
 	// create a new file
-	if (pfi.magic != SFSFSSFSF_MAGIC || force_overwrite) {
+	if (force_overwrite) {
 		pfi.magic = SFSFSSFSF_MAGIC;
 		pfi.pst_mode = S_IFREG | 0777;
 		pfi.pst_size = 0;
@@ -71,12 +75,9 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode, bool force_overwri
 		pfi.pst_ctime = pfi.pst_atime;
 		pfi.pst_mtime = pfi.pst_atime;
 	}
+	if (pfi.magic != SFSFSSFSF_MAGIC) throw "Not an SFSFSSFSF";
 	
 	file_bytes = pfi.pst_size;
-	// hopefully malloc will be okay with this
-	// FIXME: WTF?
-	data = new uint8_t[4194304];
-	decode_ptr = data;
 
 	while (!feof(pipein) && (total_bytes_read < file_bytes)) {
 		size_t bytes_read;
@@ -224,4 +225,9 @@ FILE *SFSFSSFSF::pipeout_to(string location)
 	if (!pipeout) err("Could not open ffmpeg");
 
 	return pipeout;
+}
+
+size_t SFSFSSFSF_File::get_size()
+{
+	return pfi.pst_size;
 }

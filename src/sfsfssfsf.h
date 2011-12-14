@@ -61,6 +61,7 @@ public:
 	size_t read(off_t, size_t, uint8_t *);
 	size_t write(off_t, size_t, uint8_t *);
 	void fsync();
+	size_t get_size();
 
 private:
 	inline size_t bound_num_bytes(off_t, size_t);

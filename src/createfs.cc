@@ -38,7 +38,6 @@ int main(int argc, char *argv[])
 	debug_print("init 2\n");
 	playlist_file.close();
 
-	deserialize_superblock();
 	serialize_superblock();
 	return 0;
 }

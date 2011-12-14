@@ -88,7 +88,7 @@ void deserialize_superblock(){
 		debug_print("3\n");
 		print_err(e); 
 	}
-	
+
 	SuperBlock << buf;
 	debug_print("parse 1\n");	
 	// TODO: decrypt rest of superblock before trying to use it.
@@ -97,6 +97,13 @@ void deserialize_superblock(){
 
 	SuperBlock >> key_rpath_map_size;
 	SuperBlock >> free_list_size;
+
+	// arbitrary
+	if (f->get_size() < 10) {
+		key_rpath_map_size = 0;
+		free_list_size = 0;
+	}
+	
 	for (i = 0; i < key_rpath_map_size; i++){
 		SuperBlock>>ws;
 		getline(SuperBlock, tmp1);
@@ -125,7 +132,6 @@ void serialize_superblock()
 
 	string buf, tmp1, tmp2;
 	
-	int i, key_rpath_map_size;
 	stringstream SuperBlock (stringstream::in | stringstream::out);
  
 	SuperBlock << key_rpath_map.size() << endl;
@@ -150,6 +156,7 @@ void serialize_superblock()
 	try {
 		SFSFSSFSF_File *f = new SFSFSSFSF_File(superblock_file, string(""), true);
 		f->write(SB_CRYPT_HDR_LENGTH, buf.size(), (uint8_t *)buf.c_str());
+		f->fsync();
 	}
 	catch (char *e) {
 		print_err(e);
@@ -193,8 +200,8 @@ static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_
 	debug_print("In create()\n");
 	string afile = free_list.front();
 	free_list.pop_front();
-	string key = sha256sum(afile);
-	SFSFSSFSF_File free_file(afile, NULL);
+	string key = afile;
+	SFSFSSFSF_File free_file(apath(afile), NULL);
 	free_file.fsync();
 	key_rpath_map[key] = string(path);
 	
@@ -234,7 +241,7 @@ static int fuse_service_open(const char *path, struct fuse_file_info *fi)
 {
 	debug_print("In open()\n");
 	try {
-		SFSFSSFSF_File *f = new SFSFSSFSF_File(superblock_file, NULL);
+		SFSFSSFSF_File *f = new SFSFSSFSF_File(superblock_file, string(""));
 		fi->fh = (uint64_t)f;
 		return -E_SUCCESS;
 	}
