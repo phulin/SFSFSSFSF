@@ -193,8 +193,8 @@ static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_
 	debug_print("In create()\n");
 	string afile = free_list.front();
 	free_list.pop_front();
-	string key = sha256sum(afile);
-	SFSFSSFSF_File free_file(afile, NULL);
+	string key = afile;
+	SFSFSSFSF_File free_file(apath(afile), NULL);
 	free_file.fsync();
 	key_rpath_map[key] = string(path);
 	
