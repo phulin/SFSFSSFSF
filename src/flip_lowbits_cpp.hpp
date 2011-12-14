@@ -12,6 +12,9 @@ extern "C" {
 #include <iterator>
 #include <algorithm>
 #include <string>
+#include <iostream>
+#include <fstream>
+#include <ios>
 #endif //STL
 
 #ifndef BOOST
