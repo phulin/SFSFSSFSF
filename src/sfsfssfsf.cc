@@ -21,11 +21,11 @@ int main(int argc, char *argv[])
 {
 
 	struct fuse_operations ops;
-	ops.getattr = sfsfssfsf_getattr;
+/*	ops.getattr = sfsfssfsf_getattr;
 	ops.open = sfsfssfsf_open;
 	ops.read = sfsfssfsf_read;
 	ops.readdir = sfsfssfsf_readdir;
-	ops.init = sfsfssfsf_init;
+	ops.init = sfsfssfsf_init; */
 
 	struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
 
