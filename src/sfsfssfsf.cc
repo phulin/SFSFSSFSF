@@ -7,14 +7,6 @@
 #include <sfsfssfsf.h>
 #include <fuse_service.h>
 
-// TODO: Add threadpool initialization stuff here
-static void* sfsfssfsf_init(struct fuse_conn_info *conn)
-{
-
-	// TODO: return value is passed as the sole arguement of destroy();
-	// TODO: return value is also set as fuse_context->private_data, a pointer to useful info that file operations might need. fuser_context = fuse_get_context()
-	return NULL;
-}
 
 int main(int argc, char *argv[])
 {

@@ -15,7 +15,7 @@ map <string, string> key_apath_map;
 string audiofile_list_file;
 string superblock_file;
 
-#define apath(key) key_a_path_map[key]
+#define apath(key) key_apath_map[key]
 
 string to_hex(unsigned char s) {
     stringstream ss;
@@ -70,6 +70,49 @@ static string sha256sum(string path){
 	return sha256(string((char *)pcm_buf));
 }
 
+
+static void parse_superblock(string path){
+	// TODO: add things to parse in from the superblock;
+	char* buf;
+	stringstream SuperBlock (stringstream::in | stringstream::out);
+
+	try {
+		SFSFSSFSF_File *f = new SFSFSSFSF_File(superblock_file, NULL);
+		
+		f->read(SB_CRYPT_HDR_LENGTH, SFSFSSFSF_CHUNK*100, (uint8_t *)buf);
+		debug_print("2\n");
+	}
+	catch (char *e) {
+		debug_print("3\n");
+		print_err(e); 
+	}
+	
+	SuperBlock << buf;
+	
+	// TODO: decrypt rest of superblock before trying to use it.
+	int i, key_rpath_map_size, free_list_size;
+	string tmp1, tmp2;
+
+	SuperBlock >> key_rpath_map_size >> free_list_size;
+
+	for (i = 0; i < key_rpath_map_size; i++){
+		SuperBlock>>tmp1>>tmp2;
+		key_rpath_map[tmp1] = tmp2;
+	}
+
+	for (i = 0; i < free_list_size; i++){
+		SuperBlock>>tmp1;
+		free_list.push_front(tmp1);
+	}
+	
+
+#ifdef DEBUG
+	cout<<"loaded: "<<key_apath_map.size()<<" files"<<endl;
+	cout<<"# free files: "<<free_list.size();
+#endif
+
+}
+
 // _init()_       starts all threads (called by _fuse_main_), parses M3U playlist for non-superblock files
 static void *fuse_service_init (struct fuse_conn_info *conn)
 {
@@ -77,8 +120,8 @@ static void *fuse_service_init (struct fuse_conn_info *conn)
 	// TODO: Start up Encryption Threads
 	
 	string line;
-	map<string, string> key_a_path_map;
 	ifstream playlist_file (audiofile_list_file.c_str());
+
 	debug_print("init 1\n");
 	while(playlist_file.good()){
 		getline(playlist_file, line);
@@ -91,63 +134,8 @@ static void *fuse_service_init (struct fuse_conn_info *conn)
 	}
 	debug_print("init 2\n");
 	playlist_file.close();
-	// TODO: add things to parse in from the superblock;
-	string rootfile, freefile;
-	ifstream SuperBlock(superblock_file.c_str());
 
-	
-	// TODO: decrypt rest of superblock before trying to use it.
-	SuperBlock.seekg(SB_CRYPT_HDR_LENGTH);
-
-	int i, key_rpath_map_size, free_list_size;
-	string tmp1, tmp2;
-
-	SuperBlock >> key_rpath_map_size >> free_list_size;
-
-	for (i=0;i=key_rpath_map_size;i++){
-		SuperBlock>>tmp1>>tmp2;
-		key_rpath_map[tmp1] = tmp2;
-	}
-
-	for (i=0;i=free_list_size;i++){
-		SuperBlock>>tmp1;
-		free_list.push_front(tmp1);
-	}
-
-#ifdef DEBUG
-	cout<<"loaded: "<<key_a_path_map.size()<<" files"<<endl;
-	cout<<"# free files: "<<free_list();
-#endif
-
-
-
-
-
-
-
-
-
-	//	ifstream pathmap(path(rootfile).c_str());
-	
-	//	while()
-
-	//key_a_path_map: Key->afile_path
-	
-	debug_print("init 3\n");
- 
-
-	// ifstream in(freefile.c_str());
-	
-	
-	// while(!in.eof()){
-	// 	debug_print("init 3.5\n");
-	// 	getline(in, line);
-	// 	FreeList.push_front(line);
-	// }
-
-
-	debug_print("init 4\n");
-	//MapOfDirFiles[key].push_back(filename);
+	parse_superblock(superblock_file);
 	return NULL;
 }
 // _access()_      do nothing. Assume if we can decrypt, we can access. Maybe better not to implement, in case of readonly? (what's the right answer here?)
