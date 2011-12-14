@@ -53,7 +53,7 @@ class SFSFSSFSF_File
 	uint8_t *cur_ptr;
 	size_t total_bits_read;
 	struct pstat pfi;
-	vector <string> audiofiles;
+	bool is_superblock;
 
 public:
 	SFSFSSFSF_File(string, string);
@@ -63,11 +63,19 @@ public:
 	void fsync();
 
 private:
-	size_t decode_bits(FILE *, uint8_t *, size_t);
 	inline size_t bound_num_bytes(off_t, size_t);
 };
 
-size_t decode_bits(FILE *, uint8_t *, size_t);
+namespace SFSFSSFSF {
+	size_t decode_bits(FILE *, uint8_t *, size_t);
+	size_t encode_bits(FILE *, FILE *, uint8_t *, size_t);
+	FILE *pipein_from(string);
+	FILE *pipeout_to(string);
+
+	void superblock_write(string location);
+	void superblock_read(string location);
+}
+using namespace SFSFSSFSF;
 
 
 // this is a hack but whatever

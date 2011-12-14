@@ -4,7 +4,7 @@
 // precondition: maxbytes <= SFSFSSFSF_CHUNK
 // returns number of bytes decoded.
 // will decode maxbytes bytes unless at EOF
-size_t decode_bits(FILE *pipein, uint8_t *decode_ptr, size_t maxbytes)
+size_t SFSFSSFSF::decode_bits(FILE *pipein, uint8_t *decode_ptr, size_t maxbytes)
 {
 	size_t samples_read = 0, bits_read = 0;
 	size_t maxbits = 8 * maxbytes;
@@ -130,7 +130,7 @@ size_t SFSFSSFSF_File::write(off_t offset, size_t num_bytes, uint8_t *buf)
 // returns number of bytes encoded
 // num_encode: bytes to encode
 // precondition: num_bytes <= SFSFSSFSF_CHUNK
-size_t encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, size_t num_bytes)
+size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, size_t num_bytes)
 {
 	int bit_index = 0;
 	static uint16_t pcm_buf[8 * SFSFSSFSF_CHUNK];
@@ -198,7 +198,44 @@ void SFSFSSFSF_File::fsync()
 		encode_ptr += num_encoded;
 	}
 
+	pclose(pipein);
 	pclose(pipeout);
 
 	rename(tmpname, location.c_str());
 }
+
+// self-explanatory helper functions
+// don't forget to pclose them.
+FILE *SFSFSSFSF::pipein_from(string location)
+{
+	ostringstream command;
+	command << "ffmpeg -i \"" << location << "\" -f u16le pipe:";
+	FILE *pipein = popen(command.str().c_str(), "r");
+	if (!pipein) err("Could not open ffmpeg");
+
+	return pipein;
+}
+
+FILE *SFSFSSFSF::pipeout_to(string location)
+{
+	ostringstream command;
+	command << "ffmpeg -y -loglevel quiet -f u16le -ac 2 -ar 44100 -i pipe: -f ipod -acodec alac \"" << location << "\"";
+	FILE *pipeout = popen(command.str().c_str(), "w");
+	if (!pipeout) err("Could not open ffmpeg");
+
+	return pipeout;
+}
+
+void SFSFSSFSF::superblock_write(string location)
+{
+	FILE *pipein, *pipeout;
+	try {
+		pipein = pipein_from(location);
+		pipeout = pipeout_to(location);
+	}
+
+	ostringstream serialization;
+
+}
+
+void SFSFSSFSF::superblock_read(string location) {}
