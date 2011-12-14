@@ -23,6 +23,7 @@ string superblock_file;
 //discard 4 lowest bits; use remaining static hash to indentify file.
 static string sha256(string path)
 {
+	debug_print("In sha256");
 	ostringstream command;
 	static uint16_t pcm_buf[SFSFSSFSF_CHUNK];
 	static struct pstat pfi;
@@ -44,9 +45,9 @@ static string sha256(string path)
 }
 
 // _init()_       starts all threads (called by _fuse_main_), parses M3U playlist for non-superblock files
-static void *fuse_service_init ()
+static void *fuse_service_init (struct fuse_conn_info *conn)
 {
-
+	debug_print("In init()\n");
 	// TODO: Start up Encryption Threads
 	
 	string line;
@@ -86,6 +87,8 @@ static int fuse_service_access (const char *path, int mask) {return -E_SUCCESS;}
 
 static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_info *fi)
 {
+
+	debug_print("In create()\n");
 	string afile = FreeList.front();
 	FreeList.pop_front();
 	FreeFileBitmap[afile] = 0;
@@ -104,6 +107,7 @@ static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_
 
 static int fuse_service_getattr(const char *path, struct stat *stbuf)
 {
+	debug_print("In getattr()\n");
 	memset(stbuf, 0, sizeof(struct stat));
     if(strcmp(path, "/") == 0) {
         stbuf->st_mode = S_IFDIR | 0755;
@@ -123,6 +127,7 @@ static int fuse_service_getattr(const char *path, struct stat *stbuf)
 // _open()_        returns //-EACCES//, but not really. returns _path_exists()_
 static int fuse_service_open(const char *path, struct fuse_file_info *fi)
 {
+	debug_print("In open()\n");
 	try {
 		SFSFSSFSF_File *f = new SFSFSSFSF_File(superblock_file, NULL);
 		fi->fh = (uint64_t)f;
@@ -136,17 +141,26 @@ static int fuse_service_open(const char *path, struct fuse_file_info *fi)
 static int fuse_service_read(const char *path, char *buf, size_t size,
                              off_t offset, struct fuse_file_info *fi)
 {
+	debug_print("In read()\n");
 	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
-
-	try { f->read(offset, size, (uint8_t *)buf); }
-	catch (char *e) { return print_err(e); }
-
+	debug_print("1\n");
+	try {
+		f->read(offset, size, (uint8_t *)buf);
+		debug_print("2\n");
+	}
+	catch (char *e) {
+		debug_print("3\n");
+		return print_err(e); 
+	}
+	
+ 
 	return 0;
 }
 
 static int fuse_service_write(const char *path, const char *buf, size_t size,
                               off_t offset, struct fuse_file_info *fi)
 {
+	debug_print("write()\n");
 	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
 
 	try { f->write(offset, size, (uint8_t *)buf); }
@@ -159,6 +173,7 @@ static int fuse_service_write(const char *path, const char *buf, size_t size,
 // _fsync()_       write dirty cache. AKA batch job to encryption threads.
 static int fuse_service_fsync(const char *path, int sync_metadata, struct fuse_file_info *fi)
 {
+	debug_print("In fsync()\n");
 	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
 	try { f->fsync(); }
 	catch (char *e) {
@@ -173,6 +188,7 @@ static int fuse_service_fsync(const char *path, int sync_metadata, struct fuse_f
 static int fuse_service_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                              off_t offset, struct fuse_file_info *fi)
 {
+	debug_print("In readdir()\n");
 	filler(buf, ".", NULL, 0);
 	filler(buf, "..", NULL, 0);
 	filler(buf, "file", NULL, 0);
@@ -182,6 +198,8 @@ static int fuse_service_readdir(const char *path, void *buf, fuse_fill_dir_t fil
 
 void fuse_service_ops(struct fuse_operations *ops)
 {
+	debug_print("In ops()\n");
+	ops->init = fuse_service_init;
 	ops->getattr = fuse_service_getattr;
 	ops->readdir = fuse_service_readdir;
 	ops->open = fuse_service_open;

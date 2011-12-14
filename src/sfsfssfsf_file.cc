@@ -43,6 +43,7 @@ size_t decode_bits(FILE *pipein, uint8_t *decode_ptr, size_t maxbytes)
 // decode file, etc.
 SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode)
 {
+	debug_print("in SFSFSSFSF_File(); setting location");
 	location = _location;
 
 	char command[COMMAND_LEN];
@@ -50,9 +51,10 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode)
 			 "ffmpeg -i %s -f u16le pipe:",
 			 location.c_str());
 
+	debug_print("in SFSFSSFSF_File(); about to open ffmpeg");
 	FILE *pipein = popen(command, "r");
 	if (!pipein) err("Couldn't open ffmpeg");
-
+	debug_print("in SFSFSSFSF_File(); setting location");
 	size_t total_bytes_read = 0;
 	uint64_t file_bytes = 0;
 

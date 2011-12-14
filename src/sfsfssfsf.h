@@ -36,6 +36,14 @@ using namespace std;
 // and space
 #define SFSFSSFSF_ENCODABLE(byte) ((0x7FF0 > byte) || (byte > 0x800F))
 
+#define DEBUG
+
+#ifdef DEBUG
+#define debug_print(fmt) printf(fmt)
+#else
+#define debug_print(fmt) do {} while (0)
+#endif
+
 using namespace std;
 
 class SFSFSSFSF_File
