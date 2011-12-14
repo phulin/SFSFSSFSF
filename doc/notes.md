@@ -1,3 +1,106 @@
+STRUCTURE:
+==========
+* _afile_ refers to audio files
+* _rfile_/_rdir_ refers to real files/dirs
+* No symlink/hardlink support--strictly a dumb filesystem
+* No _mkdir_ support (flatfile filesystem until further notice)
+* Following system may not scale if we do more than one _rfile_ per _afile_ (start having to deal with dependencies--hard). Thus, for now, 1 rfile/afile.
+
+On Disk Data:
+-------------
+* Superblock has encrypt_info structure at head, followed by pointer to freefile specialfile, and pointer to pathmap specialfile
+all other files are regular files.
+* keys are created from the upper bits (the bits that don't change) of each file, because filenames change, but files shouldn't.
+For more, see: "Generate list of keys from list of files", in _fuse_service_init()_
+
+For clarity, "key" is a special type. In reality, it's a C++ string.
+3 Important Files, all else Regular (in which case, see next section)
+sb (superblock, pretty short file): 
+	start--> | encrypt_info (64bytes) | key of serialized-freelist-file (64bytes) | key of serialized-pathmap-file (64bytes) | <--end
+
+fl (freelist, list<keys>, literally a list of the keys of every audio-file not yet being used to store a crypted file):
+	start--> | encrypt_info (64bytes) | serialized list of keys pointing to unused audio files |
+	
+pm (pathmap, Keys->Afile_paths, map<string,string>, )
+
+
+Regular File:
+-------------
+
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& Original File
+|                awesome music              |
+
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,, Lower Order Bits
+| 64-byte key |    rest of file, encrypted  |
+
+_________________________________             Unencrypted File
+
+
+
+Freefile Specialfile:
+---------------------
+Serialize:
+	list<string> freelist
+	ofstream out("file.dat"); //can easily be a buffer instead, for SFSFSSFSF use.
+	copy(freelist.begin(), freelist.end(), ostream_iterator<string>(out, "\n"));
+	out<<flush;
+	out.close();
+
+DeSerialize:
+	string line;
+	list<string> freelist;
+
+	ifstream in("file.dat");
+
+	while(!in.eof()){
+		getline(in, line);
+		foo.push_back(line);
+	}
+
+
+Dirfile Specialfile:
+--------------------
+Leave this serialization to me, if you don't get how to do it with streams.
+
+
+In Memory Data:
+===============
+
+Pathmap:
+--------
+need to keep track of rfile_paths->keys
+
+filler_value(pair<string,string>)
+	filler(_____, pair.second,_____);
+	
+readdir:
+	for_each(pathmap.begin(), pathmap.end(), filler_value);
+	
+create:
+	pathmap[key] = path
+	
+
+Freelist:
+---------
+_unlink_ fuse operation:
+	remove from pathmap
+	freelist.push_front(key)
+
+_create_ fuse operation:
+	add to pathmap:
+	string key = freelist.front()
+	freelist.pop_front() //this doesn't have a return value, hence previous line
+
+Global:
+-------
+list<string> freelist;
+map<string,string> pathmap
+
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^Do above first^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
 FIRST STEPS:
 ============
 * Decide on our favorite lossless format (codec+container), where favorite means easiest to work with.
@@ -40,39 +143,6 @@ RESOURCES:
 ** Main/TextUserInterface.cpp (asks for password, keyfile, etc)
 * http://www.cplusplus.com/reference/iostream/istream/getline/ (parsing m3u file)
 * http://stuff.mit.edu/iap/2009/fuse/fuse.ppt
-
-STRUCTURE:
-==========
-* _afile_ refers to audio files
-* _rfile_/_rdir_ refers to real files/dirs
-* No symlink/hardlink support--strictly a dumb filesystem
-* Following system may not scale if we do more than one _rfile_ per _afile_ (start having to deal with dependencies--hard). Thus, for now, 1 rfile/afile.
-
-On Disk Data:
--------------
-Superblock has encrypt_info structure at head, followed by pointer to root dir specialfile, and pointer to root freefile specialfile
-all other files are either regular files, dirfiles, or freefiles.
-
-Regular File:
--------------
-Nothing special. Base case for compression+encryption.
-
-Freefile Specialfile:
----------------------
-1st filename is name of next freefile specialfile or empty string
-next N filenames are filenames of freefiles.
-
-Dirfile Specialfile:
---------------------
-List of names of (all subdirectories, and all regular files) directly in this directory.
-
-In Memory Data:
----------------
-* _stl::set_ of simplified FS paths of rfiles
-* _set_ (on key of simplified path) of file writes to be synced (last write wins priority)
-* cache writes, not reads, for now.
-* cache freefile data into seperate structures, singly-linked.
-* cache dirfile data
 
 Encryption ThreadPool:
 ----------------------
