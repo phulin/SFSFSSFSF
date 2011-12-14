@@ -71,12 +71,8 @@ namespace SFSFSSFSF {
 	size_t encode_bits(FILE *, FILE *, uint8_t *, size_t);
 	FILE *pipein_from(string);
 	FILE *pipeout_to(string);
-
-	void superblock_write(string location);
-	void superblock_read(string location);
 }
 using namespace SFSFSSFSF;
-
 
 // this is a hack but whatever
 static void err(const char *msg)
