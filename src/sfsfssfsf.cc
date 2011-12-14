@@ -6,8 +6,6 @@
 
 #include <sfsfssfsf.h>
 
-static string superblock_file, audiofile_list_file;
-
 // TODO: Add threadpool initialization stuff here
 static void* sfsfssfsf_init(struct fuse_conn_info *conn)
 {
@@ -39,8 +37,8 @@ int main(int argc, char *argv[])
 	/*************************/
 
 	fuse_opt_add_arg(&args, argv[0]);	
-	superblock_file = argv[1];
-	audiofile_list_file = argv[2];
+	superblock_file = string(argv[1]);
+	audiofile_list_file = string(argv[2]);
 
 	for (int i = 3; i < argc; i++) 
 		fuse_opt_add_arg(&args, argv[i]);

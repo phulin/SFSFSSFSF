@@ -1,18 +1,16 @@
-#include <fuse.h>
-#include <stdio.h>
-#include <iostream>
-#include "FuseService.h"
+#include <fuse_service.h>
 
 using namespace std;
 
 //discard 4 lowest bits; use remaining static hash to indentify file.
-static string sha256(string path){
+static string sha256(string path)
+{
 	ostringstream command;
 	static uint16_t pcm_buf[SFSFSSFSF_CHUNK];
-	uint16_t bytes_read;
+	static struct pstat pfi;
 	int i;
 
-	command << "ffmpeg -i \"" << path << "\" -f "<<SFSFSSFSF_FORMAT<<" pipe:";
+	command << "ffmpeg -i \"" << path << "\" -f u16le pipe:";
 	FILE *pipein = popen(command, 'r');
 	if (!pipein) err("Could not open ffmpeg");
 	decode_bits(pipein, (uint8_t *) &pfi, sizeof(struct pstat));
@@ -21,7 +19,7 @@ static string sha256(string path){
 	pclose(pipein);
 	
 	for (i=0;i<SFSFSSFSF_CHUNK;i++)
-		bytes_read[i] = pcm_buf[i]>>4;
+		pcm_buf[i] = pcm_buf[i]>>4;
 
 	// TODO: send to Crypt thread for result.
 
@@ -52,7 +50,7 @@ static void *fuse_service_init ()
 	// TODO: ensure the right crypt header length is skipped.
 	SuperBlock.seekg(SB_CRYPT_HDR_LENGTH);
 	SuperBlock >> rootfile >> freefile;
-	MapOfAllPaths['/']=rootfile;
+	MapOfAllPaths["/"]=rootfile;
 	string curfreefile = freefile;
 	while(curfreefile != ""){
 		ifstream FreeFile(curfreefile);
@@ -75,10 +73,6 @@ static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_
 	FreeList.pop_front();
 	FreeFileBitmap[afile] = 0;
 	
-	MapOf
-
-
-
 	return -E_SUCCESS;
 }
 
@@ -93,16 +87,22 @@ static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_
 // _destroy()_     takes return value of init. Should do an _fsync_, then shutdown all ThreadPools
 // _getattr()_     if (seebelow),query Data structures above, fill in stbuf. Return //-ENOENT// if file does not exist.
 
-	if( (err = path_exists(path)) ) return err;
+static int fuse_service_getattr(const char *path, struct stat *stbuf)
+{
+	return -1;
+}
 
 // _open()_        returns //-EACCES//, but not really. returns _path_exists()_
-static int fuse_service_open(const char *path, struct fuse_file_info *fi){
+static int fuse_service_open(const char *path, struct fuse_file_info *fi)
+{
 	try {
 		SFSFSSFSF_File *f = new SFSFSSFSF_File(superblock_file, NULL);
 		fi->fh = (uint64_t)f;
 		return -E_SUCCESS;
 	}
-	catch (char *e) return print_err(e);
+	catch (char *e) {
+		return print_err(e);
+	}
   
 }
 
@@ -112,22 +112,12 @@ static int fuse_service_read(const string path, char *buf, size_t size,
 {
 	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
 
-	try f->read(offset, size, (uint8_t *)buf);
-	catch (char *e) return print_err(e);
-
+	try { f->read(offset, size, (uint8_t *)buf); }
+	catch (char *e) { return print_err(e); }
 
 	return 0;
 }
 
-// _readdir()_     Something like below.
-	if( (err = path_exists(path)) ) return err;
-	filler (buf, ".", NULL, 0);
-	filler (buf, "..", NULL, 0);
-	filler (buf, "bazbar", NULL, 0);
-	filler (buf, "foobar", NULL, 0);
-
-//// If there is nonzero offset: read original file up to offset, then copy partial into new buffer, append given buffer[0:size].
-//// if offset==0: write given buffer[0:size]
 //// queue an _fsync_ if the time is right (what this means is up for determination).
 // _fsync()_       write dirty cache. AKA batch job to encryption threads.
 static int fuse_service_fsync(const char *path, int sync_metadata, struct fuse_file_info *fi)
@@ -157,11 +147,6 @@ static int fuse_service_open(const char *path, struct fuse_file_info *fi)
 	return 0;
 }
 
-static int fuse_service_getattr(const char *path, struct stat *stbuf)
-{
-	return -1;
-}
-
 // _read()_        (following maintains argument order) from rfile at //path//, fill //buf//, with //size// bytes, starting from //offset// to //offset//+size. Read directly from dirty cache if available.
 static int fuse_service_read(const char *path, char *buf, size_t size,
                           off_t offset, struct fuse_file_info *fi)
@@ -189,4 +174,7 @@ static int fuse_service_readdir(const char *path, void *buf, fuse_fill_dir_t fil
 	return 0;
 }
 
-// _write()_       if offset is not zero, don't have a good way to determine clobbering order. Thus, force a _fsync_ if there is an offset write.
+void fuse_service_ops(struct fuse_operations *ops)
+{
+	
+}

@@ -10,6 +10,10 @@ using namespace std;
 #include <stdint.h>
 #include <string>
 #include <vector>
+#include <iostream>
+#include <list>
+#include <map>
+#include <vector>
 
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
@@ -67,4 +71,8 @@ static void print_err(char *e)
 	fprintf(stderr, "%s\n", e);
 	delete e;
 }
+
+extern string audiofile_list_file;
+extern string superblock_file;
+
 #endif
