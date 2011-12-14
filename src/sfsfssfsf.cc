@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 	
 	/********** USAGE ********/
 	if (argc < 4) {
-		fprintf(stderr, "Usage: %s superblock_file playlist.m3u fs-args...", argv[0]);
+		fprintf(stderr, "Usage: %s superblock_file playlist.m3u fs-args...\n", argv[0]);
 		return 1;
 	}
 
