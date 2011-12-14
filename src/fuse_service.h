@@ -16,19 +16,6 @@ using namespace std;
 **
 ******************************************************************/
 
-//hash->apath
-map <string, string> MapOfAllFiles;
-//rpath->hash
-map <string, string> MapOfAllPaths;
-//hash->vector<hash>
-map <string, vector<string> > MapOfDirFiles;
-////hash->vector<hash>
-//map <string, vector<string> > MapOfFreeFiles;
-//hash->int (boolean)
-map <string, int> FreeFileBitmap;
-list <string> FreeList;
-//hash->int (boolean)
-map <string, int> DirFileDirtyBitmap;
 
 void fuse_service_ops(struct fuse_operations *ops);
 

@@ -14,6 +14,9 @@ using namespace std;
 #include <list>
 #include <map>
 #include <vector>
+#include <sstream>
+#include <fstream>
+#include <ios>
 
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
