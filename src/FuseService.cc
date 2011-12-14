@@ -16,12 +16,12 @@ static string sha256(string path){
 	FILE *pipein = popen(command, 'r');
 	if (!pipein) err("Could not open ffmpeg");
 	decode_bits(pipein, (uint8_t *) &pfi, sizeof(struct pstat));
-
+	
 	fread(pcm_buf,2,SFSFSSFSF_CHUNK,pipein);
 	pclose(pipein);
-
+	
 	for (i=0;i<SFSFSSFSF_CHUNK;i++)
-	bytes_read[i] = pcm_buf[i]>>4;
+		bytes_read[i] = pcm_buf[i]>>4;
 
 	// TODO: send to Crypt thread for result.
 
@@ -32,18 +32,19 @@ static void *fuse_service_init ()
 {
 
 	// TODO: Start up Encryption Threads
-
+	
 	string line;
 	ifstream playlist_file (audiofile_list_file);
-
+	
 	playlist_file.open();
 	while(playlist_file.good()){
-	getline(playlist_file, line);
-	MapOfAllFiles[sha256(line)] = line;
+		getline(playlist_file, line);
+		MapOfAllFiles[sha256(line)] = line;
 #ifdef DEBUG
-	cout<<"Playlist file line:"<<line<<endl;
+		cout<<"Playlist file line:"<<line<<endl;
 #endif
 	}
+
 	playlist_file.close();
 	// TODO: add things to parse in from the superblock;
 	string rootfile, freefile;
@@ -54,8 +55,9 @@ static void *fuse_service_init ()
 	MapOfAllPaths['/']=rootfile;
 	string curfreefile = freefile;
 	while(curfreefile != ""){
-	ifstream FreeFile(curfreefile);
-	// TODO: make this list all the freefiles. Single master list, or SLL?
+		ifstream FreeFile(curfreefile);
+
+		// TODO: make this list all the freefiles. Single master list, or SLL?
 	}
 	
 	//MapOfDirFiles[key].push_back(filename);
@@ -69,7 +71,6 @@ static int fuse_service_access (const char *path, int mask) {return -E_SUCCESS;}
 
 static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_info *fi)
 {
-
 	string afile = FreeList.front();
 	FreeList.pop_front();
 	FreeFileBitmap[afile] = 0;
@@ -92,8 +93,33 @@ static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_
 // _destroy()_     takes return value of init. Should do an _fsync_, then shutdown all ThreadPools
 // _getattr()_     if (seebelow),query Data structures above, fill in stbuf. Return //-ENOENT// if file does not exist.
 
-// _readdir()_     Something like below.
+	if( (err = path_exists(path)) ) return err;
 
+// _open()_        returns //-EACCES//, but not really. returns _path_exists()_
+static int fuse_service_open(const char *path, struct fuse_file_info *fi){
+	try {
+		SFSFSSFSF_File *f = new SFSFSSFSF_File(superblock_file, NULL);
+		fi->fh = (uint64_t)f;
+		return -E_SUCCESS;
+	}
+	catch (char *e) return print_err(e);
+  
+}
+
+// _read()_        (following maintains argument order) from rfile at //path//, fill //buf//, with //size// bytes, starting from //offset// to //offset//+size. Read directly from dirty cache if available.
+static int fuse_service_read(const string path, char *buf, size_t size,
+                             off_t offset, struct fuse_file_info *fi)
+{
+	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
+
+	try f->read(offset, size, (uint8_t *)buf);
+	catch (char *e) return print_err(e);
+
+
+	return 0;
+}
+
+// _readdir()_     Something like below.
 	if( (err = path_exists(path)) ) return err;
 	filler (buf, ".", NULL, 0);
 	filler (buf, "..", NULL, 0);
