@@ -3,6 +3,21 @@
 
 using namespace std;
 
+//hash->apath
+map <string, string> MapOfAllFiles;
+//rpath->hash
+map <string, string> MapOfAllPaths;
+//hash->vector<hash>
+map <string, vector<string> > MapOfDirFiles;
+////hash->vector<hash>
+//map <string, vector<string> > MapOfFreeFiles;
+//hash->int (boolean)
+map <string, int> FreeFileBitmap;
+list <string> FreeList;
+//hash->int (boolean)
+map <string, int> DirFileDirtyBitmap;
+
+
 //discard 4 lowest bits; use remaining static hash to indentify file.
 static string sha256(string path)
 {
@@ -10,9 +25,9 @@ static string sha256(string path)
 	static uint16_t pcm_buf[SFSFSSFSF_CHUNK];
 	static struct pstat pfi;
 	int i;
-
+	
 	command << "ffmpeg -i \"" << path << "\" -f u16le pipe:";
-	FILE *pipein = popen(command, 'r');
+	FILE *pipein = popen(command.str().c_str(), "r");
 	if (!pipein) err("Could not open ffmpeg");
 	decode_bits(pipein, (uint8_t *) &pfi, sizeof(struct pstat));
 	
@@ -23,7 +38,7 @@ static string sha256(string path)
 		pcm_buf[i] = pcm_buf[i]>>4;
 
 	// TODO: send to Crypt thread for result.
-
+	return string("");
 }
 
 // _init()_       starts all threads (called by _fuse_main_), parses M3U playlist for non-superblock files
@@ -33,9 +48,8 @@ static void *fuse_service_init ()
 	// TODO: Start up Encryption Threads
 	
 	string line;
-	ifstream playlist_file (audiofile_list_file);
+	ifstream playlist_file (audiofile_list_file.c_str());
 	
-	playlist_file.open();
 	while(playlist_file.good()){
 		getline(playlist_file, line);
 		MapOfAllFiles[sha256(line)] = line;
@@ -47,14 +61,14 @@ static void *fuse_service_init ()
 	playlist_file.close();
 	// TODO: add things to parse in from the superblock;
 	string rootfile, freefile;
-	ifstream SuperBlock(superblock_file);
+	ifstream SuperBlock(superblock_file.c_str());
 	// TODO: ensure the right crypt header length is skipped.
 	SuperBlock.seekg(SB_CRYPT_HDR_LENGTH);
 	SuperBlock >> rootfile >> freefile;
 	MapOfAllPaths["/"]=rootfile;
 	string curfreefile = freefile;
 	while(curfreefile != ""){
-		ifstream FreeFile(curfreefile);
+		ifstream FreeFile(curfreefile.c_str());
 
 		// TODO: make this list all the freefiles. Single master list, or SLL?
 	}
