@@ -218,7 +218,7 @@ static int fuse_service_getattr(const char *path, struct stat *stbuf)
         stbuf->st_mode = S_IFDIR | 0755;
         stbuf->st_nlink = 2;
     }
-    else if(strcmp(path, "/file") == 0) {
+    else if( key_apath_map.find( string(path) ) != key_apath_map.end() ){
         stbuf->st_mode = S_IFREG | 0777;
         stbuf->st_nlink = 1;
         stbuf->st_size = 0; // FIXME: Implement
