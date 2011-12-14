@@ -18,7 +18,7 @@ static void* sfsfssfsf_init(struct fuse_conn_info *conn)
 
 int main(int argc, char *argv[])
 {
-
+	debug_print("At start of main\n");
 	struct fuse_operations ops;
 	fuse_service_ops(&ops);
 
@@ -40,5 +40,6 @@ int main(int argc, char *argv[])
 	for (int i = 3; i < argc; i++) 
 		fuse_opt_add_arg(&args, argv[i]);
 
+	debug_print("About to enter fuse_main\n");
 	return fuse_main(args.argc, args.argv, &ops, NULL);
 }
