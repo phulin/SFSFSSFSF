@@ -94,13 +94,29 @@ static void *fuse_service_init (struct fuse_conn_info *conn)
 	// TODO: add things to parse in from the superblock;
 	string rootfile, freefile;
 	ifstream SuperBlock(superblock_file.c_str());
+
+	
 	// TODO: decrypt rest of superblock before trying to use it.
 	SuperBlock.seekg(SB_CRYPT_HDR_LENGTH);
-	SuperBlock >> rootfile >> freefile;
 
+	int i, key_rpath_map_size, free_list_size;
+	string tmp1, tmp2;
+
+	SuperBlock >> key_rpath_map_size >> free_list_size;
+
+	for (i=0;i=key_rpath_map_size;i++){
+		SuperBlock>>tmp1>>tmp2;
+		key_rpath_map[tmp1] = tmp2;
+	}
+
+	for (i=0;i=free_list_size;i++){
+		SuperBlock>>tmp1;
+		free_list.push_front(tmp1);
+	}
 
 #ifdef DEBUG
-	cout<<"loaded"
+	cout<<"loaded: "<<key_a_path_map.size()<<" files"<<endl;
+	cout<<"# free files: "<<free_list();
 #endif
 
 
