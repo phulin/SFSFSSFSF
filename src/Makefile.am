@@ -6,7 +6,7 @@ AM_CXXFLAGS = --pedantic -Wall -O2 @fuse_CFLAGS@
 # the previous manual Makefile
 bin_PROGRAMS = hello sfsfssfsf flip_lowbits flip_lowbits_cpp #foo
 
-sfsfssfsf_SOURCES = sfsfssfsf.cc sfsfssfsf.h pstat.c pstat.h
+sfsfssfsf_SOURCES = sfsfssfsf.cc sfsfssfsf.h pstat.c pstat.h sfsfssfsf_file.cc
 sfsfssfsf_LDADD = @fuse_LIBS@
 
 flip_lowbits_SOURCES = flip_lowbits.c pstat.c pstat.h

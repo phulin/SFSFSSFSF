@@ -8,7 +8,7 @@ using namespace std;
 //discard 4 lowest bits; use remaining static hash to indentify file.
 static string sha256(string path){
   ostringstream command;
-  uint16_t pcm_buf[SFSFSSFSF_CHUNK];
+  static uint16_t pcm_buf[SFSFSSFSF_CHUNK];
   uint16_t bytes_read;
   int i;
 
