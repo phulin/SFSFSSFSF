@@ -8,10 +8,10 @@ using namespace std;
 //discard 4 lowest bits; use remaining static hash to indentify file.
 static string sha256(string path){
 	ostringstream command;
-	uint16_t pcm_buf[SFSFSSFSF_CHUNK];
+	static uint16_t pcm_buf[SFSFSSFSF_CHUNK];
 	uint16_t bytes_read;
 	int i;
-	
+
 	command << "ffmpeg -i \"" << path << "\" -f "<<SFSFSSFSF_FORMAT<<" pipe:";
 	FILE *pipein = popen(command, 'r');
 	if (!pipein) err("Could not open ffmpeg");
@@ -69,8 +69,8 @@ static int fuse_service_access (const char *path, int mask) {return -E_SUCCESS;}
 
 // _create()_      add to directory special file, and remove from last freefile specialfile in SLL (singly-linked list). change dirfile
 
-static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_info *fi){
-	
+static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_info *fi)
+{
 	string afile = FreeList.front();
 	FreeList.pop_front();
 	FreeFileBitmap[afile] = 0;
@@ -79,7 +79,7 @@ static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_
 
 
 
-		return -E_SUCCESS;
+	return -E_SUCCESS;
 }
 
 
@@ -93,7 +93,7 @@ static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_
 // _destroy()_     takes return value of init. Should do an _fsync_, then shutdown all ThreadPools
 // _getattr()_     if (seebelow),query Data structures above, fill in stbuf. Return //-ENOENT// if file does not exist.
 
-if( (err = path_exists(path)) ) return err;
+	if( (err = path_exists(path)) ) return err;
 
 // _open()_        returns //-EACCES//, but not really. returns _path_exists()_
 static int fuse_service_open(const char *path, struct fuse_file_info *fi){
@@ -121,15 +121,59 @@ static int fuse_service_read(const string path, char *buf, size_t size,
 
 
 // _readdir()_     Something like below.
-
-if( (err = path_exists(path)) ) return err;
-filler (buf, ".", NULL, 0);
-filler (buf, "..", NULL, 0);
-filler (buf, "bazbar", NULL, 0);
-filler (buf, "foobar", NULL, 0);
+	if( (err = path_exists(path)) ) return err;
+	filler (buf, ".", NULL, 0);
+	filler (buf, "..", NULL, 0);
+	filler (buf, "bazbar", NULL, 0);
+	filler (buf, "foobar", NULL, 0);
 
 // _write()_       if offset is not zero, don't have a good way to determine clobbering order. Thus, force a _fsync_ if there is an offset write.
 //// If there is nonzero offset: read original file up to offset, then copy partial into new buffer, append given buffer[0:size].
 //// if offset==0: write given buffer[0:size]
 //// queue an _fsync_ if the time is right (what this means is up for determination).
 // _fsync()_       write dirty cache. AKA batch job to encryption threads.
+
+static int fuse_service_open(const char *path, struct fuse_file_info *fi)
+{
+	try {
+		SFSFSSFSF_File *f = new SFSFSSFSF_File(superblock_file.c_str(), NULL);
+		fi->fh = (uint64_t)f;
+	}
+	catch (char *e) {
+		print_err(e);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int fuse_service_getattr(const char *path, struct stat *stbuf)
+{
+	return -1;
+}
+
+static int fuse_service_read(const char *path, char *buf, size_t size,
+                          off_t offset, struct fuse_file_info *fi)
+{
+	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
+	try {
+		f->read(offset, size, (uint8_t *)buf);
+	}
+	catch (char *e) {
+		print_err(e);
+		return -1;
+	}
+
+	return 0;
+}
+
+// TODO: implement for real
+static int fuse_service_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+                             off_t offset, struct fuse_file_info *fi)
+{
+	filler(buf, ".", NULL, 0);
+	filler(buf, "..", NULL, 0);
+	filler(buf, "file", NULL, 0);
+
+	return 0;
+}
