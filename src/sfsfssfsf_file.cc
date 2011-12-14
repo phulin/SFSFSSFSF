@@ -161,7 +161,7 @@ size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, 
 			}
 		}
 		num_written = fwrite(pcm_buf, 2, num_read, pipeout);
-		if (num_written == 0) err("Pipe error on write");
+		if (num_written == 0 && num_read > 0) err("Pipe error on write");
 	}
 
 	return (size_t)(encode_ptr - encode_buf);
