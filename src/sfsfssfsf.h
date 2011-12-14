@@ -29,13 +29,6 @@ using namespace std;
 // and space
 #define SFSFSSFSF_ENCODABLE(byte) ((0x7FF0 > byte) || (byte > 0x800F))
 
-// endianness
-#ifdef WORDS_BIGENDIAN
-  #define SFSFSSFSF_FORMAT "u16be"
-#else
-  #define SFSFSSFSF_FORMAT "u16le"
-#endif
-
 using namespace std;
 
 class SFSFSSFSF_File
@@ -52,6 +45,7 @@ public:
 	~SFSFSSFSF_File();
 	size_t read(off_t, size_t, uint8_t *);
 	size_t write(off_t, size_t, uint8_t *);
+	void fsync();
 
 private:
 	size_t decode_bits(FILE *, uint8_t *, size_t);

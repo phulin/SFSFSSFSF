@@ -92,15 +92,6 @@ static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_
 // _destroy()_     takes return value of init. Should do an _fsync_, then shutdown all ThreadPools
 // _getattr()_     if (seebelow),query Data structures above, fill in stbuf. Return //-ENOENT// if file does not exist.
 
-	if( (err = path_exists(path)) ) return err;
-
-// _open()_        returns //-EACCES//, but not really. returns _path_exists()_
-// _read()_        (following maintains argument order) from rfile at //path//, fill //buf//, with //size// bytes, starting from //offset// to //offset//+size. Read directly from dirty cache if available.
-
-	if offset>filesize return 0;
-	if offset+size>filesize return filesize-offset;
-	else return size;
-
 // _readdir()_     Something like below.
 
 	if( (err = path_exists(path)) ) return err;
@@ -109,12 +100,23 @@ static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_
 	filler (buf, "bazbar", NULL, 0);
 	filler (buf, "foobar", NULL, 0);
 
-// _write()_       if offset is not zero, don't have a good way to determine clobbering order. Thus, force a _fsync_ if there is an offset write.
 //// If there is nonzero offset: read original file up to offset, then copy partial into new buffer, append given buffer[0:size].
 //// if offset==0: write given buffer[0:size]
 //// queue an _fsync_ if the time is right (what this means is up for determination).
 // _fsync()_       write dirty cache. AKA batch job to encryption threads.
+static int fuse_service_fsync(const char *path, int sync_metadata, struct fuse_file_info *fi)
+{
+	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
+	try { f->fsync(); }
+	catch (char *e) {
+		print_err(e);
+		return -1;
+	}
 
+	return 0;
+}
+
+// _open()_        returns //-EACCES//, but not really. returns _path_exists()_
 static int fuse_service_open(const char *path, struct fuse_file_info *fi)
 {
 	try {
@@ -134,6 +136,7 @@ static int fuse_service_getattr(const char *path, struct stat *stbuf)
 	return -1;
 }
 
+// _read()_        (following maintains argument order) from rfile at //path//, fill //buf//, with //size// bytes, starting from //offset// to //offset//+size. Read directly from dirty cache if available.
 static int fuse_service_read(const char *path, char *buf, size_t size,
                           off_t offset, struct fuse_file_info *fi)
 {
@@ -159,3 +162,5 @@ static int fuse_service_readdir(const char *path, void *buf, fuse_fill_dir_t fil
 
 	return 0;
 }
+
+// _write()_       if offset is not zero, don't have a good way to determine clobbering order. Thus, force a _fsync_ if there is an offset write.

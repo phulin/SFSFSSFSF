@@ -47,7 +47,7 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode)
 
 	char command[COMMAND_LEN];
 	snprintf(command, COMMAND_LEN,
-			 "ffmpeg -i %s -f " SFSFSSFSF_FORMAT " pipe:",
+			 "ffmpeg -i %s -f u16le pipe:",
 			 location.c_str());
 
 	FILE *pipein = popen(command, "r");
@@ -110,4 +110,81 @@ size_t SFSFSSFSF_File::write(off_t offset, size_t num_bytes, uint8_t *buf)
 	memcpy(data + offset, buf, num_bytes);
 
 	return num_bytes;
+}
+
+// returns number of bytes encoded
+// num_encode: bytes to encode
+// precondition: num_bytes <= SFSFSSFSF_CHUNK
+size_t encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, size_t num_bytes)
+{
+	int bit_index = 0;
+	static uint16_t pcm_buf[8 * SFSFSSFSF_CHUNK];
+	uint8_t *encode_ptr = encode_buf;
+
+	while ((size_t)(encode_ptr - encode_buf) < num_bytes && !feof(pipein)) {
+		unsigned int i;
+		size_t num_written, num_read;
+
+		size_t num_to_read = num_bytes - (encode_ptr - encode_buf);
+		if (num_to_read >= SFSFSSFSF_CHUNK)
+			num_to_read = SFSFSSFSF_CHUNK;
+		num_read = fread(pcm_buf, 2, num_to_read, pipein);
+		if (num_read == 0) break;
+
+		for (i = 0; i < num_read; i++) {
+			if (bit_index >= 8) {
+				bit_index = 0;
+				encode_ptr++;
+			}
+
+			// only encode in things where it's (basically) invisible
+			if (SFSFSSFSF_ENCODABLE(pcm_buf[i])) {
+				// pick out and set a bit
+				uint16_t mask = 1 << bit_index;
+				pcm_buf[i] = (pcm_buf[i] & ~(0x1)) | ((*encode_ptr & mask) >> bit_index);
+				bit_index++;
+			}
+		}
+		num_written = fwrite(pcm_buf, 2, num_read, pipeout);
+		if (num_written == 0) err("Pipe error on write");
+	}
+
+	return (size_t)(encode_ptr - encode_buf);
+}
+
+void SFSFSSFSF_File::fsync()
+{
+	FILE *pipeout, *pipein;
+	char command[COMMAND_LEN], tmpname[COMMAND_LEN];
+
+	snprintf(command, COMMAND_LEN, 
+	         "ffmpeg -loglevel quiet -i %s -f u16le pipe:",
+			 location.c_str());
+
+	pipein = popen(command, "r");
+	if (!pipein) err("Couldn't open ffmpeg");
+
+	snprintf(tmpname, COMMAND_LEN,
+			 "%s.tmp", location.c_str());
+
+	// we'll write to a separate file to avoid screwing things up
+	snprintf(command, COMMAND_LEN,
+		     "ffmpeg -y -loglevel quiet -f u16le -ac 2 -ar 44100 -i pipe: -f ipod -acodec alac %s", tmpname);
+
+	pipeout = popen(command, "w");
+	if (!pipeout) err("Couldn't open ffmpeg (2)");
+
+	size_t num_encoded = encode_bits(pipein, pipeout, (uint8_t *)&pfi, sizeof pfi);
+	if (num_encoded == 0) throw "Couldn't encode header";
+
+	uint8_t *encode_ptr = data;
+	do {
+		num_encoded = encode_bits(pipein, pipeout, encode_ptr, SFSFSSFSF_CHUNK);
+		encode_ptr += num_encoded;
+	} while (num_encoded != 0);
+	if ((size_t)(encode_ptr - data) < pfi.pst_size) throw "Encoding failed";
+
+	pclose(pipeout);
+
+	rename(tmpname, location.c_str());
 }
