@@ -8,51 +8,6 @@
 
 static string superblock_file, audiofile_list_file;
 
-static int sfsfssfsf_open(const char *path, struct fuse_file_info *fi)
-{
-	try {
-		SFSFSSFSF_File *f = new SFSFSSFSF_File(superblock_file.c_str(), NULL);
-		fi->fh = (uint64_t)f;
-	}
-	catch (char *e) {
-		print_err(e);
-		return -1;
-	}
-
-	return 0;
-}
-
-static int sfsfssfsf_getattr(const char *path, struct stat *stbuf)
-{
-	return -1;
-}
-
-static int sfsfssfsf_read(const char *path, char *buf, size_t size,
-                          off_t offset, struct fuse_file_info *fi)
-{
-	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
-	try {
-		f->read(offset, size, (uint8_t *)buf);
-	}
-	catch (char *e) {
-		print_err(e);
-		return -1;
-	}
-
-	return 0;
-}
-
-// TODO: implement for real
-static int sfsfssfsf_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
-                             off_t offset, struct fuse_file_info *fi)
-{
-	filler(buf, ".", NULL, 0);
-	filler(buf, "..", NULL, 0);
-	filler(buf, "file", NULL, 0);
-
-	return 0;
-}
-
 // TODO: Add threadpool initialization stuff here
 static void* sfsfssfsf_init(struct fuse_conn_info *conn)
 {
@@ -61,7 +16,6 @@ static void* sfsfssfsf_init(struct fuse_conn_info *conn)
 	// TODO: return value is also set as fuse_context->private_data, a pointer to useful info that file operations might need. fuser_context = fuse_get_context()
 	return NULL;
 }
-
 
 int main(int argc, char *argv[])
 {
