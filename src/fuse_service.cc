@@ -235,14 +235,19 @@ static int fuse_service_fsync(const char *path, int sync_metadata, struct fuse_f
 	return 0;
 }
 
-// TODO: implement for real
 static int fuse_service_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                              off_t offset, struct fuse_file_info *fi)
 {
 	debug_print("In readdir()\n");
 	filler(buf, ".", NULL, 0);
 	filler(buf, "..", NULL, 0);
-	filler(buf, "file", NULL, 0);
+	
+	map<string, string>::iterator it;
+	for (it = key_rpath_map.begin(); it != key_rpath_map.end(); it++) {
+		// buffer full -> break
+		if (filler(buf, it[0].second, NULL, 0))
+			break;
+	}
 
 	return 0;
 }
