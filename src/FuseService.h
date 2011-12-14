@@ -3,7 +3,7 @@
 
 #define E_SUCCESS 0
 // TODO: Check this length--superblock crypt hearder length (bytes).
-#define SB_CRYPT_HDR_LENGTH 384
+#define SB_CRYPT_HDR_LENGTH 64
 
 #include <map>
 #include <string>
