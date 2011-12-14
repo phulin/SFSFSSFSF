@@ -1,6 +1,8 @@
 #include <sfsfssfsf.h>
 #include <fuse_service.h>
-
+extern "C"{
+#include "sha256.h"
+}
 using namespace std;
 
 //hash->apath
@@ -20,9 +22,32 @@ map <string, int> DirFileDirtyBitmap;
 string audiofile_list_file;
 string superblock_file;
 
+#define apath(key) key_a_path_map[key]
+
+string to_hex(unsigned char s) {
+    stringstream ss;
+    ss << hex << (int) s;
+    return ss.str();
+} 
+
 //discard 4 lowest bits; use remaining static hash to indentify file.
-static string sha256(string path)
+static string sha256(string line)
 {
+	unsigned char hash[SHA256_DIGEST_LENGTH];
+	SHA256_CTX sha256;
+	SHA256_Init(&sha256);
+	SHA256_Update(&sha256, line.c_str(), line.length());
+	SHA256_Final(hash, &sha256);
+
+	string output = "";    
+	for(int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+		output += to_hex(hash[i]);
+	}
+	return output;
+}
+
+static string sha256sum(string path){
+	
 	debug_print("In sha256");
 	ostringstream command;
 	static uint16_t pcm_buf[SFSFSSFSF_CHUNK];
@@ -39,9 +64,9 @@ static string sha256(string path)
 	
 	for (i=0;i<SFSFSSFSF_CHUNK;i++)
 		pcm_buf[i] = pcm_buf[i]>>4;
-
+	pcm_buf[SFSFSSFSF_CHUNK] =0;//null terminated
 	// TODO: send to Crypt thread for result.
-	return string("");
+	return sha256(string((char *)pcm_buf));
 }
 
 // _init()_       starts all threads (called by _fuse_main_), parses M3U playlist for non-superblock files
@@ -52,7 +77,7 @@ static void *fuse_service_init (struct fuse_conn_info *conn)
 	
 	string line;
 	ifstream playlist_file (audiofile_list_file.c_str());
-	
+	debug_print("init 1\n");
 	while(playlist_file.good()){
 		getline(playlist_file, line);
 		MapOfAllFiles[sha256(line)] = line;
@@ -60,22 +85,46 @@ static void *fuse_service_init (struct fuse_conn_info *conn)
 		cout<<"Playlist file line:"<<line<<endl;
 #endif
 	}
-
+	debug_print("init 2\n");
 	playlist_file.close();
 	// TODO: add things to parse in from the superblock;
 	string rootfile, freefile;
 	ifstream SuperBlock(superblock_file.c_str());
-	// TODO: ensure the right crypt header length is skipped.
+	// TODO: decrypt rest of superblock before trying to use it.
 	SuperBlock.seekg(SB_CRYPT_HDR_LENGTH);
 	SuperBlock >> rootfile >> freefile;
-	MapOfAllPaths["/"]=rootfile;
-	string curfreefile = freefile;
-	while(curfreefile != ""){
-		ifstream FreeFile(curfreefile.c_str());
 
-		// TODO: make this list all the freefiles. Single master list, or SLL?
-	}
 	
+
+
+
+
+
+
+
+
+
+
+	//	ifstream pathmap(path(rootfile).c_str());
+	
+	//	while()
+
+	//key_a_path_map: Key->afile_path
+	
+	debug_print("init 3\n");
+ 
+
+	ifstream in(freefile.c_str());
+	
+	
+	while(!in.eof()){
+		debug_print("init 3.5\n");
+		getline(in, line);
+		FreeList.push_front(line);
+	}
+
+
+	debug_print("init 4\n");
 	//MapOfDirFiles[key].push_back(filename);
 	return NULL;
 }
