@@ -1,3 +1,4 @@
+#include <sfsfssfsf.h>
 #include <fuse_service.h>
 
 using namespace std;
@@ -100,19 +101,28 @@ static int fuse_service_open(const char *path, struct fuse_file_info *fi)
 		fi->fh = (uint64_t)f;
 		return -E_SUCCESS;
 	}
-	catch (char *e) {
-		return print_err(e);
-	}
+	catch (char *e) { return print_err(e); }
   
 }
 
 // _read()_        (following maintains argument order) from rfile at //path//, fill //buf//, with //size// bytes, starting from //offset// to //offset//+size. Read directly from dirty cache if available.
-static int fuse_service_read(const string path, char *buf, size_t size,
+static int fuse_service_read(const char *path, char *buf, size_t size,
                              off_t offset, struct fuse_file_info *fi)
 {
 	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
 
 	try { f->read(offset, size, (uint8_t *)buf); }
+	catch (char *e) { return print_err(e); }
+
+	return 0;
+}
+
+static int fuse_service_write(const char *path, const char *buf, size_t size,
+                              off_t offset, struct fuse_file_info *fi)
+{
+	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
+
+	try { f->write(offset, size, (uint8_t *)buf); }
 	catch (char *e) { return print_err(e); }
 
 	return 0;
@@ -124,37 +134,6 @@ static int fuse_service_fsync(const char *path, int sync_metadata, struct fuse_f
 {
 	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
 	try { f->fsync(); }
-	catch (char *e) {
-		print_err(e);
-		return -1;
-	}
-
-	return 0;
-}
-
-// _open()_        returns //-EACCES//, but not really. returns _path_exists()_
-static int fuse_service_open(const char *path, struct fuse_file_info *fi)
-{
-	try {
-		SFSFSSFSF_File *f = new SFSFSSFSF_File(superblock_file.c_str(), NULL);
-		fi->fh = (uint64_t)f;
-	}
-	catch (char *e) {
-		print_err(e);
-		return -1;
-	}
-
-	return 0;
-}
-
-// _read()_        (following maintains argument order) from rfile at //path//, fill //buf//, with //size// bytes, starting from //offset// to //offset//+size. Read directly from dirty cache if available.
-static int fuse_service_read(const char *path, char *buf, size_t size,
-                          off_t offset, struct fuse_file_info *fi)
-{
-	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
-	try {
-		f->read(offset, size, (uint8_t *)buf);
-	}
 	catch (char *e) {
 		print_err(e);
 		return -1;
@@ -176,5 +155,12 @@ static int fuse_service_readdir(const char *path, void *buf, fuse_fill_dir_t fil
 
 void fuse_service_ops(struct fuse_operations *ops)
 {
-	
+	ops->getattr = fuse_service_getattr;
+	ops->readdir = fuse_service_readdir;
+	ops->open = fuse_service_open;
+	ops->read = fuse_service_read;
+	ops->write = fuse_service_write;
+	ops->fsync = fuse_service_fsync;
+	ops->access = fuse_service_access;
+	ops->create = fuse_service_create;
 }

@@ -66,10 +66,11 @@ static void err(const char *msg)
 	sprintf(ptr, "%s: %s", msg, error_s);
 }
 
-static void print_err(char *e)
+static int print_err(char *e)
 {
 	fprintf(stderr, "%s\n", e);
 	delete e;
+	return -1;
 }
 
 extern string audiofile_list_file;

@@ -5,6 +5,7 @@
 // TODO: be more flexible with atypical ALAC numchannels/etc
 
 #include <sfsfssfsf.h>
+#include <fuse_service.h>
 
 // TODO: Add threadpool initialization stuff here
 static void* sfsfssfsf_init(struct fuse_conn_info *conn)
@@ -19,11 +20,7 @@ int main(int argc, char *argv[])
 {
 
 	struct fuse_operations ops;
-/*	ops.getattr = sfsfssfsf_getattr;
-	ops.open = sfsfssfsf_open;
-	ops.read = sfsfssfsf_read;
-	ops.readdir = sfsfssfsf_readdir;
-	ops.init = sfsfssfsf_init; */
+	fuse_service_ops(&ops);
 
 	struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
 

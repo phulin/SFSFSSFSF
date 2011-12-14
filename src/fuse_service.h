@@ -5,8 +5,6 @@
 // TODO: Check this length--superblock crypt header length (bytes).
 #define SB_CRYPT_HDR_LENGTH 64
 
-#include <sfsfssfsf.h>
-
 using namespace std;
 
 /*************** Structure of the Superblock *********************
@@ -32,6 +30,6 @@ list <string> FreeList;
 //hash->int (boolean)
 map <string, int> DirFileDirtyBitmap;
 
-
+void fuse_service_ops(struct fuse_operations *ops);
 
 #endif //HAVE_FUSESERVICE_H
