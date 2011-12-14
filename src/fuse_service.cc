@@ -245,7 +245,7 @@ static int fuse_service_readdir(const char *path, void *buf, fuse_fill_dir_t fil
 	map<string, string>::iterator it;
 	for (it = key_rpath_map.begin(); it != key_rpath_map.end(); it++) {
 		// buffer full -> break
-		if (filler(buf, it[0].second, NULL, 0))
+		if (filler(buf, (*it).second.c_str(), NULL, 0))
 			break;
 	}
 
