@@ -12,6 +12,7 @@ void pstat_write(struct stat *s, struct pstat *ps)
 
 void pstat_read(struct pstat *ps, struct stat *s)
 {
+	memset(s, 0, sizeof *s);
 	s->st_mode = ps->pst_mode;
 	s->st_size = ps->pst_size;
 	s->st_atime = ps->pst_atime;

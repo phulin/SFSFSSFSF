@@ -1,5 +1,6 @@
 #include <sys/stat.h>
 #include <stdint.h>
+#include <string.h>
 
 // magic bits to start SFSFSSFSF file
 #define SFSFSSFSF_MAGIC 0xcd77ffd5e4e87258

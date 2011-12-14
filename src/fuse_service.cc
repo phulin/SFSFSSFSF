@@ -82,15 +82,26 @@ static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_
 // _unlink()_      change dirfile, add to freelist.
 // _rmdir()_       Removes empty directory. May need to return //-ENOTEMPTY//: Directory not empty. Change dirfile, add to freelist
 // _rename()_      change dirfile. Don't know how to deal with renaming to different level directory. Maybe we just don't support this.
-
-
-
 // _destroy()_     takes return value of init. Should do an _fsync_, then shutdown all ThreadPools
+
 // _getattr()_     if (seebelow),query Data structures above, fill in stbuf. Return //-ENOENT// if file does not exist.
 
 static int fuse_service_getattr(const char *path, struct stat *stbuf)
 {
-	return -1;
+	memset(stbuf, 0, sizeof(struct stat));
+    if(strcmp(path, "/") == 0) {
+        stbuf->st_mode = S_IFDIR | 0755;
+        stbuf->st_nlink = 2;
+    }
+    else if(strcmp(path, "/file") == 0) {
+        stbuf->st_mode = S_IFREG | 0777;
+        stbuf->st_nlink = 1;
+        stbuf->st_size = 0; // FIXME: Implement
+    }
+    else
+        return -ENOENT;
+
+	return -E_SUCCESS;
 }
 
 // _open()_        returns //-EACCES//, but not really. returns _path_exists()_
