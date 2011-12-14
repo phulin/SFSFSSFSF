@@ -18,7 +18,7 @@ using namespace std;
 
 // number of 16-bit ints in a chunk
 // note: this MUST be larger than sizeof(pstat)
-#define SFSFSSFSF_CHUNK 4096
+#define SFSFSSFSF_CHUNK 16384
 // maximum command length
 #define COMMAND_LEN 8192
 // minimum number of bits in a sample before we encode a bit

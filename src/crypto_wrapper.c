@@ -17,6 +17,8 @@ typedef struct{
   unsigned char* buf;
 } c_state;
 
+// give it a password, get a hardened version
+// 512-bit generally
 int c_keyderiv(const unsigned char * passwd, size_t passwdlen, 
 	       const unsigned char * salt, size_t saltlen,
 	       unsigned char * buf, size_t buflen){
@@ -27,7 +29,7 @@ int c_keyderiv(const unsigned char * passwd, size_t passwdlen,
 }
 
 /* key must be 64 bytes long */
-c_state* c_initialize(const unsigned char* key, size_t sec_size){
+c_state* c_initialize(const unsigned char* key){
   FILE* random;
   c_state* state;
   uint64_t iv;
@@ -68,6 +70,7 @@ c_state* c_initialize(const unsigned char* key, size_t sec_size){
   return(NULL);
 }
 
+// if output buffer not long enough, will cache extra data
 size_t c_encrypt(c_state* state, unsigned char* outbuf, size_t outbuflen, const unsigned char* inbuf, size_t inbuflen){
   if(state->buflen > 0){ 
     /* we have unprocessed data */
@@ -174,6 +177,7 @@ size_t c_decrypt(c_state* state, unsigned char* outbuf, size_t outbuflen, const 
   }
 }
 
+// outbuf much bigger than 32 bytes
 signed char c_encrypt_finalize(c_state* state, unsigned char* outbuf, size_t outbuflen){
   if(state->buflen > 0){
     size_t offset = c_encrypt(state, outbuf, outbuflen, NULL, 0);
@@ -191,6 +195,8 @@ signed char c_encrypt_finalize(c_state* state, unsigned char* outbuf, size_t out
   }
 }
 
+// inbuf min 32 bytes, is HMAC of data
+// HMAC should be at end of data
 signed char c_decrypt_finalize(c_state* state, unsigned char* inbuf, size_t inbuflen){
   if(state->buflen > 0){
     HMAC_SHA256_Update(&(state->hctx), state->buf, state->buflen);
