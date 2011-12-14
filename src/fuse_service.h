@@ -17,6 +17,8 @@ using namespace std;
 ******************************************************************/
 
 
-void fuse_service_ops(struct fuse_operations *ops);
+void fuse_service_ops(struct fuse_operations *);
+void parse_superblock(string, bool write_back = false);
+string sha256sum(string);
 
 #endif //HAVE_FUSESERVICE_H
