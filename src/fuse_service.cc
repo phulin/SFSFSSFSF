@@ -17,6 +17,8 @@ list <string> FreeList;
 //hash->int (boolean)
 map <string, int> DirFileDirtyBitmap;
 
+string audiofile_list_file;
+string superblock_file;
 
 //discard 4 lowest bits; use remaining static hash to indentify file.
 static string sha256(string path)
