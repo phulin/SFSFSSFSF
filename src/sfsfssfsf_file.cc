@@ -65,7 +65,7 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode)
 		if (!pipein) err("Couldn't open ffmpeg");
 		debug_print("in SFSFSSFSF_File(); setting location");
 
-		::decode_bits(pipein, (uint8_t *)&pfi, sizeof(struct pstat));
+		decode_bits(pipein, (uint8_t *)&pfi, sizeof(struct pstat));
 		if (pfi.magic != SFSFSSFSF_MAGIC) throw "Not an SFSFSSFSF";
 	}
 	else {
@@ -125,6 +125,12 @@ size_t SFSFSSFSF_File::write(off_t offset, size_t num_bytes, uint8_t *buf)
 	memcpy(data + offset, buf, num_bytes);
 
 	return num_bytes;
+}
+
+size_t SFSFSSFSF_File::direct_data(uint8_t **buf_ptr)
+{
+	*buf_ptr = data;
+	return pfi.pst_size;
 }
 
 // returns number of bytes encoded
@@ -225,17 +231,3 @@ FILE *SFSFSSFSF::pipeout_to(string location)
 
 	return pipeout;
 }
-
-void SFSFSSFSF::superblock_write(string location)
-{
-	FILE *pipein, *pipeout;
-	try {
-		pipein = pipein_from(location);
-		pipeout = pipeout_to(location);
-	}
-
-	ostringstream serialization;
-
-}
-
-void SFSFSSFSF::superblock_read(string location) {}
