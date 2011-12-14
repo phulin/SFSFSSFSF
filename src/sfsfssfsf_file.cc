@@ -69,7 +69,7 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode)
 		if (pfi.magic != SFSFSSFSF_MAGIC) throw "Not an SFSFSSFSF";
 	}
 	else {
-		pfi.magic = SFSFSSFSF_MAGIC
+		pfi.magic = SFSFSSFSF_MAGIC;
 		pfi.pst_mode = S_IFREG | 0777;
 		pfi.pst_size = 0;
 		pfi.pst_atime = (uint64_t)time(NULL);
@@ -193,7 +193,7 @@ void SFSFSSFSF_File::fsync()
 	if (num_encoded == 0) throw "Couldn't encode header";
 
 	uint8_t *encode_ptr = data;
-	while (num_encoded > 0 && encode_ptr - data < pfi.pst_size) {
+	while (num_encoded > 0 && (size_t)(encode_ptr - data) < pfi.pst_size) {
 		num_encoded = encode_bits(pipein, pipeout, encode_ptr, SFSFSSFSF_CHUNK);
 		encode_ptr += num_encoded;
 	}

@@ -39,6 +39,7 @@ static string sha256(string line)
 	return output;
 }
 
+// works on file, not string
 static string sha256sum(string path){
 	
 	debug_print("In sha256");
@@ -73,7 +74,7 @@ static void *fuse_service_init (struct fuse_conn_info *conn)
 	debug_print("init 1\n");
 	while(playlist_file.good()){
 		getline(playlist_file, line);
-		key_apath_map[sha256(line)] = line;
+		key_apath_map[sha256sum(line)] = line;
 #ifdef DEBUG
 		cout<<"Playlist file line:"<<line<<endl;
 #endif
@@ -113,7 +114,7 @@ static void *fuse_service_init (struct fuse_conn_info *conn)
 	while(!in.eof()){
 		debug_print("init 3.5\n");
 		getline(in, line);
-		FreeList.push_front(line);
+		free_list.push_front(line);
 	}
 
 
@@ -133,7 +134,7 @@ static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_
 	debug_print("In create()\n");
 	string afile = free_list.front();
 	free_list.pop_front();
-	string key = sha256(afile);
+	string key = sha256sum(afile);
 	SFSFSSFSF_File free_file(afile, NULL);
 	free_file.fsync();
 	key_rpath_map[key] = string(path);
