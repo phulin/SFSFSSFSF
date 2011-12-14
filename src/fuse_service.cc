@@ -53,7 +53,10 @@ static string sha256sum(string path){
 	if (!pipein) err("Could not open ffmpeg");
 	decode_bits(pipein, (uint8_t *) &pfi, sizeof(struct pstat));
 	
-	fread(pcm_buf,2,SFSFSSFSF_CHUNK,pipein);
+	if (!fread(pcm_buf,2,SFSFSSFSF_CHUNK,pipein)){
+		err("fread failed" );
+		return string("");
+	}
 	pclose(pipein);
 	
 	for (i=0;i<SFSFSSFSF_CHUNK;i++)
@@ -79,6 +82,8 @@ static void *fuse_service_init (struct fuse_conn_info *conn)
 	debug_print("init 1\n");
 	while(playlist_file.good()){
 		getline(playlist_file, line);
+		if(!ifstream(line.c_str()))
+			continue;
 		apath(sha256sum(line)) = line;
 #ifdef DEBUG
 		cout<<"Playlist file line:"<<line<<endl;
@@ -93,8 +98,10 @@ static void *fuse_service_init (struct fuse_conn_info *conn)
 	SuperBlock.seekg(SB_CRYPT_HDR_LENGTH);
 	SuperBlock >> rootfile >> freefile;
 
-	
 
+#ifdef DEBUG
+	cout<<"loaded"
+#endif
 
 
 
