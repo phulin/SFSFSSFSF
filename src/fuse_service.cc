@@ -71,7 +71,7 @@ string sha256sum(string path){
 }
 
 
-void parse_superblock(string path, bool write_back){
+void deserialize_superblock(){
 	// TODO: add things to parse in from the superblock;
 	// TODO: optimize with direct data
 	char* buf = new char[SFSFSSFSF_CHUNK * 100];;
@@ -79,7 +79,7 @@ void parse_superblock(string path, bool write_back){
 	SFSFSSFSF_File *f;
 
 	try {
-		f = new SFSFSSFSF_File(superblock_file, string(""), write_back);
+		f = new SFSFSSFSF_File(superblock_file, string(""));
 		
 		f->read(SB_CRYPT_HDR_LENGTH, SFSFSSFSF_CHUNK*100, (uint8_t *)buf);
 		debug_print("2\n");
@@ -95,20 +95,20 @@ void parse_superblock(string path, bool write_back){
 	int i, key_rpath_map_size, free_list_size;
 	string tmp1, tmp2;
 
-	SuperBlock >> key_rpath_map_size >> free_list_size;
-
+	SuperBlock >> key_rpath_map_size;
+	SuperBlock >> free_list_size;
 	for (i = 0; i < key_rpath_map_size; i++){
-		SuperBlock>>tmp1>>tmp2;
+		SuperBlock>>ws;
+		getline(SuperBlock, tmp1);
+		getline(SuperBlock, tmp2);
 		key_rpath_map[tmp1] = tmp2;
 	}
-
 	for (i = 0; i < free_list_size; i++){
-		SuperBlock>>tmp1;
+		SuperBlock>>ws;
+		getline(SuperBlock, tmp1);
 		free_list.push_front(tmp1);
 	}
-	debug_print("parse 2\n");
-	if (write_back)
-		f->fsync();
+
 	delete buf;
 	delete f;
 
@@ -117,6 +117,43 @@ void parse_superblock(string path, bool write_back){
 	cout<<"# free files: "<<free_list.size();
 #endif
 
+}
+
+void serialize_superblock()
+{
+	string path = superblock_file;
+
+	string buf, tmp1, tmp2;
+	
+	int i, key_rpath_map_size;
+	stringstream SuperBlock (stringstream::in | stringstream::out);
+ 
+	SuperBlock << key_rpath_map.size() << endl;
+	SuperBlock << free_list.size() << endl;
+	for(std::map<string, string>::iterator itr = key_rpath_map.begin(), itr_end = key_rpath_map.end(); itr != itr_end; ++itr) {
+		tmp1 = itr->first;
+		tmp2 = itr->second;
+		SuperBlock<<tmp1<<endl<<tmp2<<endl;
+	}
+
+	for (list<string>::iterator itr = free_list.begin(), itr_end = free_list.end(); itr != itr_end; ++itr) {
+		tmp1 = *itr;
+		SuperBlock << tmp1 << endl;
+	}
+	
+	while(SuperBlock.good()){
+		getline(SuperBlock, tmp1);
+		SuperBlock>>ws;
+		buf+=tmp1+"\n";
+	}
+
+	try {
+		SFSFSSFSF_File *f = new SFSFSSFSF_File(superblock_file, string(""), true);
+		f->write(SB_CRYPT_HDR_LENGTH, buf.size(), (uint8_t *)buf.c_str());
+	}
+	catch (char *e) {
+		print_err(e);
+	}
 }
 
 // _init()_       starts all threads (called by _fuse_main_), parses M3U playlist for non-superblock files
@@ -141,7 +178,7 @@ static void *fuse_service_init (struct fuse_conn_info *conn)
 	debug_print("init 2\n");
 	playlist_file.close();
 
-	parse_superblock(superblock_file);
+	deserialize_superblock();
 	return NULL;
 }
 // _access()_      do nothing. Assume if we can decrypt, we can access. Maybe better not to implement, in case of readonly? (what's the right answer here?)
