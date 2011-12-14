@@ -66,6 +66,10 @@ static string sha256sum(string path){
 		pcm_buf[i] = pcm_buf[i]>>4;
 	pcm_buf[SFSFSSFSF_CHUNK] =0;//null terminated
 	// TODO: send to Crypt thread for result.
+#ifdef DEBUG
+	cout << "sha256 sum for file:"<<path<<endl;
+	cout << sha256(string((char *)pcm_buf))<<endl;	
+#endif
 	return sha256(string((char *)pcm_buf));
 }
 
@@ -76,11 +80,12 @@ static void *fuse_service_init (struct fuse_conn_info *conn)
 	// TODO: Start up Encryption Threads
 	
 	string line;
+	map<string, string> key_a_path_map;
 	ifstream playlist_file (audiofile_list_file.c_str());
 	debug_print("init 1\n");
 	while(playlist_file.good()){
 		getline(playlist_file, line);
-		MapOfAllFiles[sha256(line)] = line;
+		apath(sha256sum(line)) = line;
 #ifdef DEBUG
 		cout<<"Playlist file line:"<<line<<endl;
 #endif
@@ -114,14 +119,14 @@ static void *fuse_service_init (struct fuse_conn_info *conn)
 	debug_print("init 3\n");
  
 
-	ifstream in(freefile.c_str());
+	// ifstream in(freefile.c_str());
 	
 	
-	while(!in.eof()){
-		debug_print("init 3.5\n");
-		getline(in, line);
-		FreeList.push_front(line);
-	}
+	// while(!in.eof()){
+	// 	debug_print("init 3.5\n");
+	// 	getline(in, line);
+	// 	FreeList.push_front(line);
+	// }
 
 
 	debug_print("init 4\n");
