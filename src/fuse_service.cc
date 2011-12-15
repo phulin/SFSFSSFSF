@@ -5,6 +5,10 @@ extern "C"{
 }
 using namespace std;
 
+#define CREATEFS
+
+#define apath(key) key_apath_map[key]
+
 // list of free files
 list <string> free_list;
 // hash->rpath
@@ -15,7 +19,6 @@ map <string, string> key_apath_map;
 string audiofile_list_file;
 string superblock_file;
 
-#define apath(key) key_apath_map[key]
 
 string to_hex(unsigned char s) {
     stringstream ss;
@@ -50,7 +53,7 @@ string sha256sum(string path){
 	
 	command << "ffmpeg -i \"" << path << "\" -f u16le pipe:";
 	FILE *pipein = popen(command.str().c_str(), "r");
-	if (!pipein) err("Could not open ffmpeg");
+	if (!pipein) printf("Could not open ffmpeg");
 	decode_bits(pipein, (uint8_t *) &pfi, sizeof(struct pstat));
 	
 	if (!fread(pcm_buf,2,SFSFSSFSF_CHUNK,pipein)){
@@ -128,6 +131,7 @@ void deserialize_superblock(){
 
 void serialize_superblock()
 {
+	debug_print("In serialize_superblock");
 	string path = superblock_file;
 
 	string buf, tmp1, tmp2;
@@ -181,11 +185,18 @@ static void *fuse_service_init (struct fuse_conn_info *conn)
 #ifdef DEBUG
 		cout<<"Playlist file line:"<<line<<endl;
 #endif
+#ifdef CREATEFS
+		free_list.push_front(sha256sum(line));
+		cout<<"free_list now is size:"<<free_list.size()<<endl;
+#endif
 	}
 	debug_print("init 2\n");
-	playlist_file.close();
+       	playlist_file.close();
 
-	deserialize_superblock();
+#ifndef CREATEFS
+       	deserialize_superblock();
+#endif	
+
 	return NULL;
 }
 // _access()_      do nothing. Assume if we can decrypt, we can access. Maybe better not to implement, in case of readonly? (what's the right answer here?)
@@ -194,18 +205,30 @@ static int fuse_service_access (const char *path, int mask) {return -E_SUCCESS;}
 
 // _create()_      add to directory special file, and remove from last freefile specialfile in SLL (singly-linked list). change dirfile
 
-static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_info *fi)
+static int fuse_service_mknod (const char *path, mode_t mode, dev_t foobar)
 {
-
+	
+	static string rpath = string(path+1);
+	if( key_rpath_map.find( rpath ) != key_rpath_map.end() )
+		return -ENOENT;
+	
+	cout<<"path to create:"<<rpath<<"|"<<endl;
+	cout<<key_rpath_map.size()<<endl;
+	cout<<free_list.size()<<endl;
+	debug_print("create 1\n");
 	debug_print("In create()\n");
 	string afile = free_list.front();
+	debug_print("create 2\n");
 	free_list.pop_front();
-	string key = afile;
-	SFSFSSFSF_File free_file(apath(afile), NULL);
+	debug_print("create 3\n");
+	SFSFSSFSF_File free_file(apath(afile), string(""),true);
+	debug_print("create 4\n");
 	free_file.fsync();
-	key_rpath_map[key] = string(path);
-	
-	return -E_SUCCESS;
+	debug_print("create 5\n");
+	key_rpath_map[afile] = string(path);
+	debug_print("create 6\n");
+	serialize_superblock();
+	return E_SUCCESS;
 }
 
 
@@ -219,7 +242,6 @@ static int fuse_service_create (const char *path, mode_t mode, struct fuse_file_
 
 static int fuse_service_getattr(const char *path, struct stat *stbuf)
 {
-	debug_print("In getattr()\n");
 	memset(stbuf, 0, sizeof(struct stat));
     if(strcmp(path, "/") == 0) {
         stbuf->st_mode = S_IFDIR | 0755;
@@ -299,14 +321,16 @@ static int fuse_service_fsync(const char *path, int sync_metadata, struct fuse_f
 static int fuse_service_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                              off_t offset, struct fuse_file_info *fi)
 {
+	cout<<key_rpath_map.size()<<endl;
 	debug_print("In readdir()\n");
 	filler(buf, ".", NULL, 0);
 	filler(buf, "..", NULL, 0);
 	
-	map<string, string>::iterator it;
-	for (it = key_rpath_map.begin(); it != key_rpath_map.end(); it++) {
+	map<string, string>::iterator it, itend;
+	for (it = key_rpath_map.begin(), itend = key_rpath_map.end(); it != key_rpath_map.end(); it++) {
+		cout<<"|"<<it->second<<"|"<<endl;
 		// buffer full -> break
-		if (filler(buf, (*it).second.c_str(), NULL, 0))
+		if (filler(buf, (*it).second.c_str()+1, NULL, 0))
 			break;
 	}
 
@@ -324,5 +348,5 @@ void fuse_service_ops(struct fuse_operations *ops)
 	ops->write = fuse_service_write;
 	ops->fsync = fuse_service_fsync;
 	ops->access = fuse_service_access;
-	ops->create = fuse_service_create;
+	ops->mknod = fuse_service_mknod;
 }

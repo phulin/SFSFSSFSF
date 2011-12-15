@@ -43,7 +43,7 @@ size_t SFSFSSFSF::decode_bits(FILE *pipein, uint8_t *decode_ptr, size_t maxbytes
 // decode file, etc.
 SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode, bool force_overwrite)
 {
-	debug_print("in SFSFSSFSF_File(); setting location");
+	debug_print("in SFSFSSFSF_File(); setting location\n");
 	location = _location;
 
 	size_t total_bytes_read = 0;
@@ -53,13 +53,13 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode, bool force_overwri
 	
 	char command[COMMAND_LEN];
 	snprintf(command, COMMAND_LEN,
-			 "ffmpeg -i %s -f u16le pipe:",
+			 "ffmpeg -i \"%s\" -f u16le pipe:",
 			 location.c_str());
 
-	debug_print("in SFSFSSFSF_File(); about to open ffmpeg");
+	debug_print("in SFSFSSFSF_File(); about to open ffmpeg\n");
 	pipein = popen(command, "r");
-	if (!pipein) err("Couldn't open ffmpeg");
-	debug_print("in SFSFSSFSF_File(); setting location");
+	if (!pipein) err("Couldn't open ffmpeg\n");
+	debug_print("in SFSFSSFSF_File(); setting location\n");
 
 	decode_bits(pipein, (uint8_t *)&pfi, sizeof(struct pstat));
 	// hopefully malloc will be okay with this
@@ -173,7 +173,7 @@ void SFSFSSFSF_File::fsync()
 	char command[COMMAND_LEN], tmpname[COMMAND_LEN];
 
 	snprintf(command, COMMAND_LEN, 
-	         "ffmpeg -loglevel quiet -i %s -f u16le pipe:",
+	         "ffmpeg -loglevel quiet -i \"%s\" -f u16le pipe:",
 			 location.c_str());
 
 	pipein = popen(command, "r");
@@ -184,7 +184,7 @@ void SFSFSSFSF_File::fsync()
 
 	// we'll write to a separate file to avoid screwing things up
 	snprintf(command, COMMAND_LEN,
-		     "ffmpeg -y -loglevel quiet -f u16le -ac 2 -ar 44100 -i pipe: -f ipod -acodec alac %s", tmpname);
+		     "ffmpeg -y -loglevel quiet -f u16le -ac 2 -ar 44100 -i pipe: -f ipod -acodec alac \"%s\"", tmpname);
 
 	pipeout = popen(command, "w");
 	if (!pipeout) err("Couldn't open ffmpeg (2)");
