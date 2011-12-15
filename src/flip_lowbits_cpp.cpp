@@ -1,6 +1,7 @@
 #include "flip_lowbits_cpp.hpp"
 #include <iostream>
 #include <map>
+#include <list>
 #include <sstream>
 #include <istream>
 #include <ostream>
@@ -74,6 +75,8 @@ int main(int argc, char *argv[]){
 
 	//init for serialization
 	map<string,string> key_rpath_map;
+	list<string> free_list;
+
 	key_rpath_map["hello"] = "we b/ww abw//w ba/";
 	key_rpath_map["goodbye"] = "foodler/";
 
@@ -81,13 +84,14 @@ int main(int argc, char *argv[]){
 	//serialization
 	string buf, tmp1, tmp2;
 	
-	int i, key_rpath_map_size;
+	int i, key_rpath_map_size, free_list_size;
 	stringstream SuperBlock (stringstream::in | stringstream::out);
 	
 
 
  
 	SuperBlock << key_rpath_map.size() <<endl;
+	SuperBlock<< free_list.size()<<endl;
 
 
 	for(std::map<string, string>::iterator itr = key_rpath_map.begin(), itr_end = key_rpath_map.end(); itr != itr_end; ++itr) {
@@ -115,8 +119,13 @@ int main(int argc, char *argv[]){
 	tmp2 = "";
 
 	SuperBlock2 >> key_rpath_map_size;
+	SuperBlock2 >> free_list_size;
 
 	cout<<endl;
+
+	cout<<key_rpath_map_size << endl;
+	cout<<free_list_size << endl;
+
 	for (i = 0; i < key_rpath_map_size; i++){
 		SuperBlock2>>ws;
 		getline(SuperBlock2, tmp1);
@@ -124,7 +133,6 @@ int main(int argc, char *argv[]){
 		key_rpath_map2[tmp1] = tmp2;
 	}
 
-	cout << endl << endl;
 
 
 	string foo = key_rpath_map2["goodbye"];
