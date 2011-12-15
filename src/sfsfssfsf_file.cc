@@ -105,7 +105,7 @@ SFSFSSFSF_File::~SFSFSSFSF_File()
 inline size_t SFSFSSFSF_File::bound_num_bytes(off_t offset, size_t num_bytes)
 {
 	size_t bytes_left = pfi.pst_size - offset;
-	assert(offset <= pfi.pst_size);
+	assert((size_t)offset <= pfi.pst_size);
 	if (num_bytes > bytes_left)
 		return bytes_left;
 	else

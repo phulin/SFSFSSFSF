@@ -88,7 +88,6 @@ static void err(const char *msg)
 static int print_err(char *e)
 {
 	fprintf(stderr, "%s\n", e);
-	delete e;
 	return -1;
 }
 
