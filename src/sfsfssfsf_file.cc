@@ -105,8 +105,7 @@ SFSFSSFSF_File::~SFSFSSFSF_File()
 inline size_t SFSFSSFSF_File::bound_num_bytes(off_t offset, size_t num_bytes)
 {
 	size_t bytes_left = pfi.pst_size - offset;
-	assert(offset <= pfi.pst_size,
-	       "trying to read starting past the end of a file");
+	assert(offset <= pfi.pst_size);
 	if (num_bytes > bytes_left)
 		return bytes_left;
 	else
@@ -146,14 +145,14 @@ size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, 
 	static uint16_t pcm_buf[8 * SFSFSSFSF_CHUNK];
 	uint8_t *encode_ptr = encode_buf;
 
-	assert(num_bytes <= SFSFSSFSF_CHUNK, "asked for too many bytes, fuck you");
+	assert(num_bytes <= SFSFSSFSF_CHUNK);
 
 	while ((size_t)(encode_ptr - encode_buf) < num_bytes && !feof(pipein)) {
 		unsigned int i;
 		size_t num_written, num_read;
 
 		size_t num_to_read = num_bytes - (encode_ptr - encode_buf);
-		assert (num_to_read <= SFSFSSFSF_CHUNK, "num_to_read too big");
+		assert (num_to_read <= SFSFSSFSF_CHUNK);
 		num_read = fread(pcm_buf, 2, num_to_read, pipein);
 		if (num_read == 0) break;
 
@@ -176,7 +175,7 @@ size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, 
 		if (num_written == 0 && num_read > 0) err("Pipe error on write");
 	}
 
-	assert(bit_index == 0, "non-byte-aligned write");
+	assert(bit_index == 0);
 
 	return (size_t)(encode_ptr - encode_buf);
 }

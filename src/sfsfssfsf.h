@@ -6,6 +6,7 @@ using namespace std;
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <assert.h>
 
 #include <stdint.h>
 #include <string>
