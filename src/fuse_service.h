@@ -18,8 +18,8 @@ using namespace std;
 
 
 void fuse_service_ops(struct fuse_operations *);
-void deserialize_superblock();
-void serialize_superblock();
+int deserialize_superblock();
+int serialize_superblock();
 string sha256sum(string);
 
 #endif //HAVE_FUSESERVICE_H

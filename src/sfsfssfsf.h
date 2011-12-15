@@ -51,10 +51,8 @@ class SFSFSSFSF_File
 {
 	string location; // in what file is it stored?
 	uint8_t *data;
-	uint8_t *cur_ptr;
 	size_t total_bits_read;
 	struct pstat pfi;
-	bool is_superblock;
 
 public:
 	SFSFSSFSF_File(string, string, bool force_overwrite = false);

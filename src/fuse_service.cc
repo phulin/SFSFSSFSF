@@ -29,7 +29,7 @@ string to_hex(unsigned char s) {
 //discard 4 lowest bits; use remaining static hash to indentify file.
 static string sha256(string line)
 {
-	unsigned char hash[SHA256_DIGEST_LENGTH];
+	unsigned char hash[SHA256_DIGEST_LENGTH] = {0};
 	SHA256_CTX sha256;
 	SHA256_Init(&sha256);
 	SHA256_Update(&sha256, line.c_str(), line.length());
@@ -47,7 +47,7 @@ string sha256sum(string path){
 	
 	debug_print("In sha256");
 	ostringstream command;
-	static uint16_t pcm_buf[SFSFSSFSF_CHUNK];
+	static uint16_t pcm_buf[SFSFSSFSF_CHUNK] = {0};
 	static struct pstat pfi;
 	int i;
 	
@@ -74,26 +74,28 @@ string sha256sum(string path){
 }
 
 
-void deserialize_superblock(){
+int deserialize_superblock(){
 	// TODO: add things to parse in from the superblock;
 	// TODO: optimize with direct data
-	char* buf = new char[SFSFSSFSF_CHUNK * 100];;
+	char* buf = new char[SFSFSSFSF_CHUNK * 100];
+	memset(buf, 0, SFSFSSFSF_CHUNK * 100);
 	stringstream SuperBlock (stringstream::in | stringstream::out);
 	SFSFSSFSF_File *f;
 
+	debug_print("deserialize 1\n");
 	try {
 		f = new SFSFSSFSF_File(superblock_file, string(""));
 		
 		f->read(SB_CRYPT_HDR_LENGTH, SFSFSSFSF_CHUNK*100, (uint8_t *)buf);
-		debug_print("2\n");
+		debug_print("deserialize 2\n");
 	}
 	catch (char *e) {
-		debug_print("3\n");
-		print_err(e); 
+		debug_print("deserialize 3\n");
+		return print_err(e); 
 	}
 
 	SuperBlock << buf;
-	debug_print("parse 1\n");	
+
 	// TODO: decrypt rest of superblock before trying to use it.
 	int i, key_rpath_map_size, free_list_size;
 	string tmp1, tmp2;
@@ -126,10 +128,11 @@ void deserialize_superblock(){
 	cout<<"loaded: "<<key_apath_map.size()<<" files"<<endl;
 	cout<<"# free files: "<<free_list.size();
 #endif
+	return -E_SUCCESS;
 
 }
 
-void serialize_superblock()
+int serialize_superblock()
 {
 	debug_print("In serialize_superblock");
 	string path = superblock_file;
@@ -165,6 +168,7 @@ void serialize_superblock()
 	catch (char *e) {
 		print_err(e);
 	}
+	return -E_SUCCESS;
 }
 
 // _init()_       starts all threads (called by _fuse_main_), parses M3U playlist for non-superblock files
@@ -178,6 +182,7 @@ static void *fuse_service_init (struct fuse_conn_info *conn)
 
 	debug_print("init 1\n");
 	while(playlist_file.good()){
+		debug_print("reading playlist file\n");
 		getline(playlist_file, line);
 		if(!ifstream(line.c_str()))
 			continue;
@@ -190,11 +195,18 @@ static void *fuse_service_init (struct fuse_conn_info *conn)
 		cout<<"free_list now is size:"<<free_list.size()<<endl;
 #endif
 	}
+	if (!key_apath_map.size()){
+		cout<<"No filenames from playlist could be loaded. Specify valid playlist!\n"<<flush;
+		exit(-1);
+	}
 	debug_print("init 2\n");
        	playlist_file.close();
 
 #ifndef CREATEFS
-       	deserialize_superblock();
+	int err;
+	if((err=deserialize_superblock())){
+		print_err("createfs in init threw err in deserialize_superblock:\n\tperhaps it's not a valid superblock\n");
+	}
 #endif	
 
 	return NULL;
@@ -207,7 +219,9 @@ static int fuse_service_access (const char *path, int mask) {return -E_SUCCESS;}
 
 static int fuse_service_mknod (const char *path, mode_t mode, dev_t foobar)
 {
+	debug_print("In create()\n");
 	
+	return 0;
 	static string rpath = string(path+1);
 	if( key_rpath_map.find( rpath ) != key_rpath_map.end() )
 		return -ENOENT;
@@ -216,7 +230,6 @@ static int fuse_service_mknod (const char *path, mode_t mode, dev_t foobar)
 	cout<<key_rpath_map.size()<<endl;
 	cout<<free_list.size()<<endl;
 	debug_print("create 1\n");
-	debug_print("In create()\n");
 	string afile = free_list.front();
 	debug_print("create 2\n");
 	free_list.pop_front();

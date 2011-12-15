@@ -8,7 +8,7 @@ size_t SFSFSSFSF::decode_bits(FILE *pipein, uint8_t *decode_ptr, size_t maxbytes
 {
 	size_t samples_read = 0, bits_read = 0;
 	size_t maxbits = 8 * maxbytes;
-	static uint16_t pcm_buf[8 * SFSFSSFSF_CHUNK];
+	static uint16_t pcm_buf[8 * SFSFSSFSF_CHUNK] = {0};
 	int bit_index = 0;
 
 	*decode_ptr = 0;
@@ -44,12 +44,14 @@ size_t SFSFSSFSF::decode_bits(FILE *pipein, uint8_t *decode_ptr, size_t maxbytes
 SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode, bool force_overwrite)
 {
 	debug_print("in SFSFSSFSF_File(); setting location\n");
+	total_bits_read = 0;
+
 	location = _location;
 
 	uint8_t *decode_ptr;
 	FILE *pipein = NULL;
 	
-	char command[COMMAND_LEN];
+	char command[COMMAND_LEN] = {0};
 	snprintf(command, COMMAND_LEN,
 			 "ffmpeg -i \"%s\" -f u16le pipe:",
 			 location.c_str());
@@ -61,11 +63,15 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode, bool force_overwri
 
 	// hopefully malloc will be okay with this
 	// FIXME: WTF?
+	// zero data array
 	data = new uint8_t[4194304];
-	decode_ptr = data;
+	memset(data, 0, 4194304);
+
+	decode_ptr =  (uint8_t *)&pfi;
 	// if force_overwrite, create a new pstat struct
 	// otherwise read in the one stored in the file
 	if (force_overwrite) {
+		debug_print("New file, using force_overwrite\n");
 		pfi.magic = SFSFSSFSF_MAGIC;
 		pfi.pst_mode = S_IFREG | 0777;
 		pfi.pst_size = 0;
@@ -74,7 +80,7 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode, bool force_overwri
 		pfi.pst_mtime = pfi.pst_atime;
 	}
 	else {
-		decode_bits(pipein, (uint8_t *)&pfi, sizeof(struct pstat));
+		decode_bits(pipein, decode_ptr, sizeof(struct pstat));
 	}
 	if (pfi.magic != SFSFSSFSF_MAGIC) throw "Not an SFSFSSFSF";
 	
@@ -83,6 +89,7 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode, bool force_overwri
 	// read in the rest of the file
 	// if new file, won't enter while loop as file_bytes = 0
 	size_t total_bytes_read = 0;
+	decode_ptr = data;
 	while (!feof(pipein) && (total_bytes_read < file_bytes)) {
 		size_t bytes_read;
 
@@ -141,8 +148,10 @@ size_t SFSFSSFSF_File::write(off_t offset, size_t num_bytes, uint8_t *buf)
 // precondition: num_bytes <= SFSFSSFSF_CHUNK
 size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, size_t num_bytes, bool still_encoding)
 {
+	cout<<"encode bits with"<<num_bytes<<endl;
+	cout<<"still encoding: "<<still_encoding<<endl;
 	int bit_index = 0;
-	static uint16_t pcm_buf[8 * SFSFSSFSF_CHUNK];
+	static uint16_t pcm_buf[8 * SFSFSSFSF_CHUNK] = {0};
 	uint8_t *encode_ptr = encode_buf;
 
 	assert(num_bytes <= SFSFSSFSF_CHUNK);
@@ -175,7 +184,7 @@ size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, 
 		if (num_written == 0 && num_read > 0) err("Pipe error on write");
 	}
 
-	assert(bit_index == 0);
+	//	assert(feof(pipein) || bit_index == 0);
 
 	return (size_t)(encode_ptr - encode_buf);
 }
@@ -183,35 +192,48 @@ size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, 
 void SFSFSSFSF_File::fsync()
 {
 	debug_print("entering fsync\n");
+       
+#ifdef DEBUG
+	cout<<"fsyncing "<<location<<endl;
+#endif
 	FILE *pipeout, *pipein;
-	char command[COMMAND_LEN], tmpname[COMMAND_LEN];
+	char command[COMMAND_LEN], tmpname[COMMAND_LEN] = {0};
 
 	snprintf(command, COMMAND_LEN, 
 	         "ffmpeg -loglevel quiet -i \"%s\" -f u16le pipe:",
-			 location.c_str());
+	         location.c_str());
 
 	pipein = popen(command, "r");
 	if (!pipein) err("Couldn't open ffmpeg");
 
 	snprintf(tmpname, COMMAND_LEN,
-			 "%s.tmp", location.c_str());
+	         "%s.tmp", location.c_str());
 
+	debug_print("fsync 1\n");
 	// we'll write to a separate file to avoid screwing things up
 	snprintf(command, COMMAND_LEN,
-		     "ffmpeg -y -loglevel quiet -f u16le -ac 2 -ar 44100 -i pipe: -f ipod -acodec alac \"%s\"", tmpname);
+	         "ffmpeg -y -loglevel quiet -f u16le -ac 2 -ar 44100 -i "\
+	         "pipe: -f ipod -acodec alac \"%s\"", tmpname);
+	debug_print("fsync 2\n");
 
 	pipeout = popen(command, "w");
 	if (!pipeout) err("Couldn't open ffmpeg (2)");
+	debug_print("fsync 3\n");
+	uint8_t * encode_ptr = (uint8_t *) &pfi;
 
-	size_t num_encoded = encode_bits(pipein, pipeout, (uint8_t *)&pfi, sizeof pfi);
+	size_t num_encoded = encode_bits(pipein, pipeout, encode_ptr, sizeof(pfi) );
 	if (num_encoded == 0) throw "Couldn't encode header";
+	debug_print("fsync 4\n");
 
-	uint8_t *encode_ptr = data;
+	encode_ptr = data;
 	while (num_encoded > 0) {
+		debug_print("fsync 5\n");
+		
 		num_encoded = encode_bits(pipein, pipeout, encode_ptr, SFSFSSFSF_CHUNK, 
-								  (size_t)(encode_ptr - data) < pfi.pst_size);
+	                          (size_t)(encode_ptr - data) < pfi.pst_size);
 		encode_ptr += num_encoded;
 	}
+	debug_print("fsync 6\n");
 
 	pclose(pipein);
 	pclose(pipeout);
@@ -234,7 +256,8 @@ FILE *SFSFSSFSF::pipein_from(string location)
 FILE *SFSFSSFSF::pipeout_to(string location)
 {
 	ostringstream command;
-	command << "ffmpeg -y -loglevel quiet -f u16le -ac 2 -ar 44100 -i pipe: -f ipod -acodec alac \"" << location << "\"";
+	command << "ffmpeg -y -loglevel quiet -f u16le -ac 2 -ar 44100 -i pipe: -f" \
+	           " ipod -acodec alac \"" << location << "\"";
 	FILE *pipeout = popen(command.str().c_str(), "w");
 	if (!pipeout) err("Could not open ffmpeg");
 
