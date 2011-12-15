@@ -34,7 +34,7 @@ using namespace std;
 // TODO: this really _should_ be hidden in the FS options
 // to allow user-defined, runtime tradeoff between security
 // and space
-#define SFSFSSFSF_ENCODABLE(byte) ((0x7FF0 > byte) || (byte > 0x800F))
+#define SFSFSSFSF_ENCODABLE(sample) ((0x7FF0 > sample) || (sample > 0x800F))
 
 #define DEBUG
 
@@ -78,6 +78,7 @@ using namespace SFSFSSFSF;
 // this is a hack but whatever
 static void err(const char *msg)
 {
+	debug_print("throwing an error\n");
 	char *error_s = strerror(errno);
 	char *ptr = new char[strlen(msg) + strlen(error_s) + 8];
 	sprintf(ptr, "%s: %s", msg, error_s);

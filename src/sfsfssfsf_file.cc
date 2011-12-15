@@ -46,27 +46,24 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode, bool force_overwri
 	debug_print("in SFSFSSFSF_File(); setting location");
 	location = _location;
 
-	size_t total_bytes_read = 0;
-	uint64_t file_bytes = 0;
 	uint8_t *decode_ptr;
 	FILE *pipein = NULL;
 	
 	char command[COMMAND_LEN];
 	snprintf(command, COMMAND_LEN,
-			 "ffmpeg -i %s -f u16le pipe:",
+			 "ffmpeg -i \"%s\" -f u16le pipe:",
 			 location.c_str());
 
 	debug_print("in SFSFSSFSF_File(); about to open ffmpeg");
 	pipein = popen(command, "r");
 	if (!pipein) err("Couldn't open ffmpeg");
-	debug_print("in SFSFSSFSF_File(); setting location");
 
-	decode_bits(pipein, (uint8_t *)&pfi, sizeof(struct pstat));
 	// hopefully malloc will be okay with this
 	// FIXME: WTF?
 	data = new uint8_t[4194304];
 	decode_ptr = data;
-	// create a new file
+	// if force_overwrite, create a new pstat struct
+	// otherwise read in the one stored in the file
 	if (force_overwrite) {
 		pfi.magic = SFSFSSFSF_MAGIC;
 		pfi.pst_mode = S_IFREG | 0777;
@@ -75,10 +72,16 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode, bool force_overwri
 		pfi.pst_ctime = pfi.pst_atime;
 		pfi.pst_mtime = pfi.pst_atime;
 	}
+	else {
+		decode_bits(pipein, (uint8_t *)&pfi, sizeof(struct pstat));
+	}
 	if (pfi.magic != SFSFSSFSF_MAGIC) throw "Not an SFSFSSFSF";
 	
-	file_bytes = pfi.pst_size;
+	uint64_t file_bytes = pfi.pst_size;
 
+	// read in the rest of the file
+	// if new file, won't enter while loop as file_bytes = 0
+	size_t total_bytes_read = 0;
 	while (!feof(pipein) && (total_bytes_read < file_bytes)) {
 		size_t bytes_read;
 
@@ -101,6 +104,8 @@ SFSFSSFSF_File::~SFSFSSFSF_File()
 inline size_t SFSFSSFSF_File::bound_num_bytes(off_t offset, size_t num_bytes)
 {
 	size_t bytes_left = pfi.pst_size - offset;
+	assert(offset <= pfi.pst_size,
+	       "trying to read starting past the end of a file");
 	if (num_bytes > bytes_left)
 		return bytes_left;
 	else
@@ -127,6 +132,10 @@ size_t SFSFSSFSF_File::write(off_t offset, size_t num_bytes, uint8_t *buf)
 	return num_bytes;
 }
 
+// takes enough samples from pipein to get num_bytes bytes of data
+// encodes data from encode_buf into samples from pipein
+// and send the altered samples to pipeout
+// unless still_encoding is false, in which case the data is passed unaltered.
 // returns number of bytes encoded
 // num_encode: bytes to encode
 // precondition: num_bytes <= SFSFSSFSF_CHUNK
@@ -136,13 +145,14 @@ size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, 
 	static uint16_t pcm_buf[8 * SFSFSSFSF_CHUNK];
 	uint8_t *encode_ptr = encode_buf;
 
+	assert(num_bytes <= SFSFSSFSF_CHUNK, "asked for too many bytes, fuck you");
+
 	while ((size_t)(encode_ptr - encode_buf) < num_bytes && !feof(pipein)) {
 		unsigned int i;
 		size_t num_written, num_read;
 
 		size_t num_to_read = num_bytes - (encode_ptr - encode_buf);
-		if (num_to_read >= SFSFSSFSF_CHUNK)
-			num_to_read = SFSFSSFSF_CHUNK;
+		assert (num_to_read <= SFSFSSFSF_CHUNK, "num_to_read too big");
 		num_read = fread(pcm_buf, 2, num_to_read, pipein);
 		if (num_read == 0) break;
 
@@ -156,7 +166,8 @@ size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, 
 			if (SFSFSSFSF_ENCODABLE(pcm_buf[i]) && still_encoding) {
 				// pick out and set a bit
 				uint16_t mask = 1 << bit_index;
-				pcm_buf[i] = (pcm_buf[i] & ~(0x1)) | ((*encode_ptr & mask) >> bit_index);
+				// zero last bit and put the new thing in
+				pcm_buf[i] = (pcm_buf[i] & 0xFFFE) | ((*encode_ptr & mask) >> bit_index);
 				bit_index++;
 			}
 		}
@@ -164,11 +175,14 @@ size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, 
 		if (num_written == 0 && num_read > 0) err("Pipe error on write");
 	}
 
+	assert(bit_index == 0, "non-byte-aligned write");
+
 	return (size_t)(encode_ptr - encode_buf);
 }
 
 void SFSFSSFSF_File::fsync()
 {
+	debug_print("entering fsync\n");
 	FILE *pipeout, *pipein;
 	char command[COMMAND_LEN], tmpname[COMMAND_LEN];
 
