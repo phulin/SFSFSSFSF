@@ -10,9 +10,9 @@ using namespace std;
 #define apath(key) key_apath_map[key]
 
 
-// list of free files
+// list of free files (hashed)
 list <string> free_list;
-// hash->rpath
+// rpath->hash
 map <string, string> key_rpath_map;
 // hash->apath
 map <string, string> key_apath_map;
