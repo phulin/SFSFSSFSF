@@ -43,7 +43,9 @@ size_t SFSFSSFSF::decode_bits(FILE *pipein, uint8_t *decode_ptr, size_t maxbytes
 // decode file, etc.
 SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode, bool force_overwrite)
 {
-	debug_print("in SFSFSSFSF_File(); setting location\n");
+#ifdef DEBUG
+	cout<<"in SFSFSSFSF_File(); setting location: |"<<_location<<"|\n"<<flush;
+#endif
 	total_bits_read = 0;
 
 	location = _location;
@@ -59,7 +61,8 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode, bool force_overwri
 	debug_print("in SFSFSSFSF_File(); about to open ffmpeg\n");
 	pipein = popen(command, "r");
 	if (!pipein) err("Couldn't open ffmpeg\n");
-	debug_print("in SFSFSSFSF_File(); setting location\n");
+
+	debug_print("Opened ffmpeg okay\n");
 
 	// hopefully malloc will be okay with this
 	// FIXME: WTF?
@@ -67,10 +70,14 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode, bool force_overwri
 	data = new uint8_t[4194304];
 	memset(data, 0, 4194304);
 
+	debug_print("SFSFSSSF_File 1\n");
+
 	decode_ptr =  (uint8_t *)&pfi;
 	// if force_overwrite, create a new pstat struct
 	// otherwise read in the one stored in the file
 	if (force_overwrite) {
+		debug_print("SFSFSSSF_File 2\n");
+
 		debug_print("New file, using force_overwrite\n");
 		pfi.magic = SFSFSSFSF_MAGIC;
 		pfi.pst_mode = S_IFREG | 0777;
@@ -80,11 +87,15 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode, bool force_overwri
 		pfi.pst_mtime = pfi.pst_atime;
 	}
 	else {
+		debug_print("SFSFSSSF_File 3\n");
 		decode_bits(pipein, decode_ptr, sizeof(struct pstat));
 	}
+	debug_print("SFSFSSSF_File 4\n");
+
 	if (pfi.magic != SFSFSSFSF_MAGIC) throw "Not an SFSFSSFSF";
 	
 	uint64_t file_bytes = pfi.pst_size;
+	debug_print("SFSFSSSF_File 5\n");
 
 	// read in the rest of the file
 	// if new file, won't enter while loop as file_bytes = 0
@@ -99,8 +110,12 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode, bool force_overwri
 		total_bytes_read += bytes_read;
 		decode_ptr += bytes_read;
 	}
+	debug_print("SFSFSSSF_File 6\n");
+
 	// now data has been decoded and loaded into memory
 	if (pipein) pclose(pipein);
+	debug_print("SFSFSSSF_File 7\n");
+
 }
 
 SFSFSSFSF_File::~SFSFSSFSF_File()
