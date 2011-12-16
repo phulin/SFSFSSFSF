@@ -315,7 +315,9 @@ static int fuse_service_open(const char *path, struct fuse_file_info *fi)
        
 	if( rpath_fileobj.find(rpath) != rpath_fileobj.end()){
 		debug_print("found existing fileobject\n");
-		fi->fh = (uint64_t)rpath_fileobj[rpath];
+		SFSFSSFSF_File *f = rpath_fileobj[rpath];
+		fi->fh = (uint64_t)f;
+		f->retain();
 		return -E_SUCCESS;
 	}
 	
@@ -351,7 +353,6 @@ static int fuse_service_read(const char *path, char *buf, size_t size,
 		debug_print("read 3\n\n");
 		return print_err(e); 
 	}
-	
 	
 	return 0;
 }
@@ -399,6 +400,14 @@ static int fuse_service_readdir(const char *path, void *buf, fuse_fill_dir_t fil
 			break;
 	}
 
+	return 0;
+}
+
+static int fuse_service_release(const char *path, struct fuse_file_info *fi)
+{
+	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
+	if (f->release())
+		delete f;
 	return 0;
 }
 

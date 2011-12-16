@@ -53,6 +53,7 @@ class SFSFSSFSF_File
 	uint8_t *data;
 	size_t total_bits_read;
 	struct pstat pfi;
+	int ref_count;
 
 public:
 	SFSFSSFSF_File(string, string, bool force_overwrite = false);
@@ -61,6 +62,8 @@ public:
 	size_t write(off_t, size_t, uint8_t *);
 	void fsync();
 	size_t get_size();
+	void retain() { ref_count++; }
+	bool release();
 
 private:
 	inline size_t bound_num_bytes(off_t, size_t);

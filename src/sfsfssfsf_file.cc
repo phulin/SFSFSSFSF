@@ -51,6 +51,8 @@ SFSFSSFSF_File::SFSFSSFSF_File(string _location, string mode, bool force_overwri
 #ifdef DEBUG
 	cout<<"in SFSFSSFSF_File(); setting location: |"<<_location<<"|\n"<<flush;
 #endif
+	ref_count = 0;
+
 	total_bits_read = 0;
 
 	location = _location;
@@ -298,4 +300,14 @@ FILE *SFSFSSFSF::pipeout_to(string location)
 size_t SFSFSSFSF_File::get_size()
 {
 	return pfi.pst_size;
+}
+
+// returns true if out of references
+bool SFSFSSFSF_File::release()
+{
+	ref_count--;
+	if (ref_count == 0)
+		return true;
+	else
+		return false;
 }
