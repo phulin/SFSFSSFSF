@@ -43,4 +43,4 @@ AC_CHECK_HEADERS([endian.h])
 
 # Checks for library functions.
 
-AC_OUTPUT([Makefile src/Makefile])
+AC_OUTPUT([Makefile src/Makefile test/Makefile])

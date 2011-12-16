@@ -161,13 +161,6 @@ size_t SFSFSSFSF_File::write(off_t offset, size_t num_bytes, uint8_t *buf)
 	return num_bytes;
 }
 
-
-off_t SFSFSSFSF::encode_bits2(FILE* pipein, FILE *pipeout, uint8_t *encode_buf, size_t num_bytes, bool still_encoding){
-	
-
-	return 0;
-}
-
 // takes enough samples from pipein to get num_bytes bytes of data
 // encodes data from encode_buf into samples from pipein
 // and send the altered samples to pipeout
