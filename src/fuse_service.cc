@@ -5,7 +5,7 @@ extern "C"{
 }
 using namespace std;
 
-#define CREATEFS
+//#define CREATEFS
 
 #define apath(key) key_apath_map[key]
 
@@ -45,7 +45,7 @@ static string sha256(string line)
 // works on file, not string
 string sha256sum(string path){
 	
-	debug_print("In sha256");
+	debug_print("In sha256sum\n");
 	ostringstream command;
 	static uint16_t pcm_buf[SFSFSSFSF_CHUNK] = {0};
 	static struct pstat pfi;
@@ -75,6 +75,8 @@ string sha256sum(string path){
 
 
 int deserialize_superblock(){
+	debug_print("In deserialize_superblock()\n");
+	
 	// TODO: add things to parse in from the superblock;
 	// TODO: optimize with direct data
 	char* buf = new char[SFSFSSFSF_CHUNK * 100];
@@ -95,19 +97,21 @@ int deserialize_superblock(){
 	}
 
 	SuperBlock << buf;
+	debug_print("deserialize a\n");
 
 	// TODO: decrypt rest of superblock before trying to use it.
 	int i, key_rpath_map_size, free_list_size;
 	string tmp1, tmp2;
+	debug_print("deserialize b\n");
 
 	SuperBlock >> key_rpath_map_size;
 	SuperBlock >> free_list_size;
+	debug_print("deserialize c\n");
 
-	// arbitrary
-	if (f->get_size() < 10) {
-		key_rpath_map_size = 0;
-		free_list_size = 0;
-	}
+	assert (free_list_size <= key_apath_map.size());
+	assert (key_rpath_map_size <= key_apath_map.size());
+	debug_print("deserialize d\n");
+
 	
 	for (i = 0; i < key_rpath_map_size; i++){
 		SuperBlock>>ws;
@@ -128,6 +132,7 @@ int deserialize_superblock(){
 	cout<<"loaded: "<<key_apath_map.size()<<" files"<<endl;
 	cout<<"# free files: "<<free_list.size();
 #endif
+	debug_print("deserialize finished\n");
 	return -E_SUCCESS;
 
 }
@@ -161,13 +166,14 @@ int serialize_superblock()
 	}
 
 	try {
-		SFSFSSFSF_File *f = new SFSFSSFSF_File(superblock_file, string(""), true);
+		SFSFSSFSF_File *f = new SFSFSSFSF_File(path, string(""), true);
 		f->write(SB_CRYPT_HDR_LENGTH, buf.size(), (uint8_t *)buf.c_str());
 		f->fsync();
 	}
 	catch (char *e) {
 		print_err(e);
 	}
+	debug_print("serialize_superblock finished\n\n");
 	return -E_SUCCESS;
 }
 
@@ -221,8 +227,7 @@ static int fuse_service_mknod (const char *path, mode_t mode, dev_t foobar)
 {
 	debug_print("In create()\n");
 	
-	return 0;
-	static string rpath = string(path+1);
+	static string rpath = string(path);
 	if( key_rpath_map.find( rpath ) != key_rpath_map.end() )
 		return -ENOENT;
 	
@@ -231,17 +236,15 @@ static int fuse_service_mknod (const char *path, mode_t mode, dev_t foobar)
 	cout<<free_list.size()<<endl;
 	debug_print("create 1\n");
 	string afile = free_list.front();
-	debug_print("create 2\n");
 	free_list.pop_front();
+	debug_print("create 2\n");
+	SFSFSSFSF_File free_file(apath(afile), string(""), true);
 	debug_print("create 3\n");
-	SFSFSSFSF_File free_file(apath(afile), string(""),true);
-	debug_print("create 4\n");
 	free_file.fsync();
-	debug_print("create 5\n");
-	key_rpath_map[afile] = string(path);
-	debug_print("create 6\n");
-	serialize_superblock();
-	return E_SUCCESS;
+	debug_print("create 4\n");
+	key_rpath_map[string(path)] = afile;
+	debug_print("create 5\n\n");
+	return serialize_superblock();
 }
 
 
@@ -255,28 +258,45 @@ static int fuse_service_mknod (const char *path, mode_t mode, dev_t foobar)
 
 static int fuse_service_getattr(const char *path, struct stat *stbuf)
 {
+#ifdef DEBUG
+	cout<<"in getattr, for path:"<<path<<"|\n"<<flush;
+#endif 
+	string rpath = string(path);
+	
 	memset(stbuf, 0, sizeof(struct stat));
-    if(strcmp(path, "/") == 0) {
-        stbuf->st_mode = S_IFDIR | 0755;
-        stbuf->st_nlink = 2;
-    }
-    else if( key_apath_map.find( string(path) ) != key_apath_map.end() ){
-        stbuf->st_mode = S_IFREG | 0777;
-        stbuf->st_nlink = 1;
-        stbuf->st_size = 0; // FIXME: Implement
-    }
-    else
-        return -ENOENT;
-
+	
+	if(rpath=="/") {
+		debug_print("getattr 1\n");
+		stbuf->st_mode = S_IFDIR | 0755;
+		stbuf->st_nlink = 2;
+	}
+	else if( key_rpath_map.find( string(path) ) != key_rpath_map.end() ){
+		debug_print("getattr 2\n");
+		SFSFSSFSF_File *f = new SFSFSSFSF_File(apath(key_rpath_map[rpath]), string(""));
+		
+		stbuf->st_mode = S_IFREG | 0777;
+		stbuf->st_nlink = 1;
+		stbuf->st_size = f->get_size();
+		debug_print("getattr 3\n");
+		
+	}
+	else{
+		debug_print("getattr could not find file\n");	
+		return -ENOENT;
+	}
+	debug_print("getattr 4\n\n");
+	
 	return -E_SUCCESS;
 }
 
 // _open()_        returns //-EACCES//, but not really. returns _path_exists()_
 static int fuse_service_open(const char *path, struct fuse_file_info *fi)
 {
+	string rpath = string(path);
 	debug_print("In open()\n");
+	cout<<"no, really, in open()\n"<<flush;
 	try {
-		SFSFSSFSF_File *f = new SFSFSSFSF_File(superblock_file, string(""));
+		SFSFSSFSF_File *f = new SFSFSSFSF_File(apath(key_rpath_map[rpath]), string(""));
 		fi->fh = (uint64_t)f;
 		return -E_SUCCESS;
 	}
@@ -290,24 +310,24 @@ static int fuse_service_read(const char *path, char *buf, size_t size,
 {
 	debug_print("In read()\n");
 	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
-	debug_print("1\n");
+	debug_print("read 1\n");
 	try {
 		f->read(offset, size, (uint8_t *)buf);
-		debug_print("2\n");
+		debug_print("read 2\n\n");
 	}
 	catch (char *e) {
-		debug_print("3\n");
+		debug_print("read 3\n\n");
 		return print_err(e); 
 	}
 	
- 
+	
 	return 0;
 }
 
 static int fuse_service_write(const char *path, const char *buf, size_t size,
                               off_t offset, struct fuse_file_info *fi)
 {
-	debug_print("write()\n");
+	debug_print("write()\n\n");
 	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
 
 	try { f->write(offset, size, (uint8_t *)buf); }
@@ -320,12 +340,13 @@ static int fuse_service_write(const char *path, const char *buf, size_t size,
 // _fsync()_       write dirty cache. AKA batch job to encryption threads.
 static int fuse_service_fsync(const char *path, int sync_metadata, struct fuse_file_info *fi)
 {
-	debug_print("In fsync()\n");
+	debug_print("In fsync()\n\n");
 	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
 	try { f->fsync(); }
 	catch (char *e) {
 		print_err(e);
 		return -1;
+		debug_print("fuse_fsync failed\n\n");
 	}
 
 	return 0;
@@ -334,16 +355,15 @@ static int fuse_service_fsync(const char *path, int sync_metadata, struct fuse_f
 static int fuse_service_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                              off_t offset, struct fuse_file_info *fi)
 {
+	debug_print("In readdir()\n\n");	
 	cout<<key_rpath_map.size()<<endl;
-	debug_print("In readdir()\n");
 	filler(buf, ".", NULL, 0);
 	filler(buf, "..", NULL, 0);
 	
 	map<string, string>::iterator it, itend;
 	for (it = key_rpath_map.begin(), itend = key_rpath_map.end(); it != key_rpath_map.end(); it++) {
-		cout<<"|"<<it->second<<"|"<<endl;
 		// buffer full -> break
-		if (filler(buf, (*it).second.c_str()+1, NULL, 0))
+		if (filler(buf, (*it).first.c_str()+1, NULL, 0))
 			break;
 	}
 
@@ -352,7 +372,7 @@ static int fuse_service_readdir(const char *path, void *buf, fuse_fill_dir_t fil
 
 void fuse_service_ops(struct fuse_operations *ops)
 {
-	debug_print("In ops()\n");
+	debug_print("In ops()\n\n");
 	ops->init = fuse_service_init;
 	ops->getattr = fuse_service_getattr;
 	ops->readdir = fuse_service_readdir;

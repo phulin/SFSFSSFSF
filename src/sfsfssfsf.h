@@ -40,7 +40,7 @@ using namespace std;
 #define DEBUG
 
 #ifdef DEBUG
-#define debug_print(fmt) printf(fmt)
+#define debug_print(fmt) printf(fmt); fflush(stdout)
 #else
 #define debug_print(fmt) do {} while (0)
 #endif
