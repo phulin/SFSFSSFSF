@@ -99,6 +99,9 @@ int deserialize_superblock(){
 		return print_err(e); 
 	}
 
+#ifdef DEBUG
+	cout<<"buf is:"<<endl<<buf<<endl;
+#endif
 	SuperBlock << buf;
 	debug_print("deserialize a\n");
 
@@ -129,6 +132,7 @@ int deserialize_superblock(){
 		getline(SuperBlock, tmp1);
 		free_list.push_front(tmp1);
 	}
+	
 
 	delete buf;
 	delete f;
@@ -179,6 +183,9 @@ int serialize_superblock()
 		print_err(e);
 	}
 	debug_print("serialize_superblock finished\n\n");
+#ifdef DEBUG
+	cout<<"buf is:"<<endl<<buf<<endl;
+#endif
 	return -E_SUCCESS;
 }
 
@@ -395,13 +402,6 @@ static int fuse_service_readdir(const char *path, void *buf, fuse_fill_dir_t fil
 	return 0;
 }
 
-static int fuse_service_release(const char *path, struct fuse_file_info *fi)
-{
-	SFSFSSFSF_File *f = (SFSFSSFSF_File *)(fi->fh);
-	f->~SFSFSSFSF_File();
-	return 0;
-}
-
 void fuse_service_ops(struct fuse_operations *ops)
 {
 	debug_print("In ops()\n\n");
@@ -414,5 +414,4 @@ void fuse_service_ops(struct fuse_operations *ops)
 	ops->fsync = fuse_service_fsync;
 	ops->access = fuse_service_access;
 	ops->mknod = fuse_service_mknod;
-	ops->release = fuse_service_release;
 }

@@ -6,6 +6,7 @@
 // will decode maxbytes bytes unless at EOF
 size_t SFSFSSFSF::decode_bits(FILE *pipein, uint8_t *decode_ptr, size_t maxbytes)
 {
+	debug_print("In decode_bits\n");
 	size_t samples_read = 0, bits_read = 0;
 	size_t maxbits = 8 * maxbytes;
 	static uint16_t pcm_buf[8 * SFSFSSFSF_CHUNK] = {0};
@@ -20,6 +21,9 @@ size_t SFSFSSFSF::decode_bits(FILE *pipein, uint8_t *decode_ptr, size_t maxbytes
 		for (unsigned int i = 0; i < samples_read; i++) {
 			if (bit_index >= 8) {
 				bit_index = 0;
+#ifdef DEBUG
+				cout<<(char)*decode_ptr;
+#endif
 				decode_ptr++;
 				*decode_ptr = 0;
 			}
@@ -32,6 +36,8 @@ size_t SFSFSSFSF::decode_bits(FILE *pipein, uint8_t *decode_ptr, size_t maxbytes
 			}
 		}
 	}
+	debug_print("\n");
+
 
 	if (bits_read % 8 != 0) throw "Non-byte-aligned read";
 	return bits_read / 8;
@@ -170,7 +176,6 @@ size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, 
 	uint8_t *encode_ptr = encode_buf;
 
 	assert(num_bytes <= SFSFSSFSF_CHUNK);
-
 	while ((size_t)(encode_ptr - encode_buf) < num_bytes && !feof(pipein)) {
 		unsigned int i;
 		size_t num_written, num_read;
@@ -183,7 +188,11 @@ size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, 
 		for (i = 0; i < num_read; i++) {
 			if (bit_index >= 8) {
 				bit_index = 0;
+#ifdef DEBUG
+				cout<<(char)*encode_ptr;
+#endif
 				encode_ptr++;
+				
 			}
 
 			// only encode in things where it's (basically) invisible
@@ -198,6 +207,7 @@ size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, 
 		num_written = fwrite(pcm_buf, 2, num_read, pipeout);
 		if (num_written == 0 && num_read > 0) err("Pipe error on write");
 	}
+	debug_print("\n");
 
 	//	assert(feof(pipein) || bit_index == 0);
 
