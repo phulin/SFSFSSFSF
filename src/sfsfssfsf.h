@@ -68,7 +68,7 @@ private:
 
 namespace SFSFSSFSF {
 	size_t decode_bits(FILE *, uint8_t *, size_t);
-	size_t encode_bits(FILE *, FILE *, uint8_t *, size_t, bool = true);
+	off_t encode_bits(FILE *, FILE *, uint8_t *, size_t, bool = true);
 	FILE *pipein_from(string);
 	FILE *pipeout_to(string);
 }

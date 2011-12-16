@@ -6,7 +6,6 @@
 // will decode maxbytes bytes unless at EOF
 size_t SFSFSSFSF::decode_bits(FILE *pipein, uint8_t *decode_ptr, size_t maxbytes)
 {
-	debug_print("In decode_bits\n");
 	size_t samples_read = 0, bits_read = 0;
 	size_t maxbits = 8 * maxbytes;
 	static uint16_t pcm_buf[8 * SFSFSSFSF_CHUNK] = {0};
@@ -160,6 +159,13 @@ size_t SFSFSSFSF_File::write(off_t offset, size_t num_bytes, uint8_t *buf)
 	return num_bytes;
 }
 
+
+off_t SFSFSSFSF::encode_bits2(FILE* pipein, FILE *pipeout, uint8_t *encode_buf, size_t num_bytes, bool still_encoding){
+	
+
+	return 0;
+}
+
 // takes enough samples from pipein to get num_bytes bytes of data
 // encodes data from encode_buf into samples from pipein
 // and send the altered samples to pipeout
@@ -167,10 +173,8 @@ size_t SFSFSSFSF_File::write(off_t offset, size_t num_bytes, uint8_t *buf)
 // returns number of bytes encoded
 // num_encode: bytes to encode
 // precondition: num_bytes <= SFSFSSFSF_CHUNK
-size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, size_t num_bytes, bool still_encoding)
+off_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, size_t num_bytes, bool still_encoding)
 {
-	cout<<"encode bits with"<<num_bytes<<endl;
-	cout<<"still encoding: "<<still_encoding<<endl;
 	int bit_index = 0;
 	static uint16_t pcm_buf[8 * SFSFSSFSF_CHUNK] = {0};
 	uint8_t *encode_ptr = encode_buf;
@@ -207,7 +211,10 @@ size_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, 
 		num_written = fwrite(pcm_buf, 2, num_read, pipeout);
 		if (num_written == 0 && num_read > 0) err("Pipe error on write");
 	}
-	debug_print("\n");
+	//	debug_print("\n");
+
+	if(feof(pipein)) 
+		return -1;
 
 	//	assert(feof(pipein) || bit_index == 0);
 
@@ -251,8 +258,7 @@ void SFSFSSFSF_File::fsync()
 	debug_print("fsync 4\n");
 
 	encode_ptr = data;
-	while (num_encoded > 0) {
-		debug_print("fsync 5\n");
+	while (num_encoded >= 0) {
 		
 		num_encoded = encode_bits(pipein, pipeout, encode_ptr, SFSFSSFSF_CHUNK, 
 	                          (size_t)(encode_ptr - data) < pfi.pst_size);
