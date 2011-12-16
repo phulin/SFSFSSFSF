@@ -31,8 +31,8 @@ AS_IF([ test ! -d ./resources/boost], [echo "Unpacking boost (1st time use)..."
 
 PKG_CHECK_MODULES([fuse], [fuse])
 
-PKG_CHECK_MODULES([libavcodec], [libavcodec])
-PKG_CHECK_MODULES([libavformat], [libavformat])
+#PKG_CHECK_MODULES([libavcodec], [libavcodec])
+#PKG_CHECK_MODULES([libavformat], [libavformat])
 
 PKG_CHECK_MODULES([libssl], [libssl])
 

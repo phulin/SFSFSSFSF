@@ -20,7 +20,7 @@ size_t SFSFSSFSF::decode_bits(FILE *pipein, uint8_t *decode_ptr, size_t maxbytes
 		for (unsigned int i = 0; i < samples_read; i++) {
 			if (bit_index >= 8) {
 				bit_index = 0;
-#ifdef DEBUG
+#ifdef VDEBUG
 				cout<<(char)*decode_ptr;
 #endif
 				decode_ptr++;
@@ -36,7 +36,6 @@ size_t SFSFSSFSF::decode_bits(FILE *pipein, uint8_t *decode_ptr, size_t maxbytes
 		}
 	}
 	debug_print("\n");
-
 
 	if (bits_read % 8 != 0) throw "Non-byte-aligned read";
 	return bits_read / 8;
@@ -185,33 +184,31 @@ off_t SFSFSSFSF::encode_bits(FILE *pipein, FILE *pipeout, uint8_t *encode_buf, s
 		if (num_read == 0) break;
 
 		for (i = 0; i < num_read; i++) {
-			if (bit_index >= 8) {
-				bit_index = 0;
-#ifdef DEBUG
-				cout<<(char)*encode_ptr;
-#endif
-				encode_ptr++;
-				
-			}
-
 			// only encode in things where it's (basically) invisible
 			if (SFSFSSFSF_ENCODABLE(pcm_buf[i]) && still_encoding) {
 				// pick out and set a bit
 				uint16_t mask = 1 << bit_index;
 				// zero last bit and put the new thing in
-				pcm_buf[i] = (pcm_buf[i] & 0xFFFE) | ((*encode_ptr & mask) >> bit_index);
+				pcm_buf[i] = (pcm_buf[i] & ~(0x1)) | ((*encode_ptr & mask) >> bit_index);
 				bit_index++;
+			}
+
+			if (bit_index >= 8) {
+				bit_index = 0;
+#ifdef VDEBUG
+				cout<<(char)*encode_ptr;
+#endif
+				encode_ptr++;
 			}
 		}
 		num_written = fwrite(pcm_buf, 2, num_read, pipeout);
 		if (num_written == 0 && num_read > 0) err("Pipe error on write");
 	}
-	//	debug_print("\n");
 
 	if(feof(pipein)) 
 		return -1;
 
-	//	assert(feof(pipein) || bit_index == 0);
+	assert(feof(pipein) || bit_index == 0);
 
 	return (size_t)(encode_ptr - encode_buf);
 }

@@ -1,5 +1,5 @@
-AM_CFLAGS = --pedantic -Wall -std=c99 @fuse_CFLAGS@ @libssl_CFLAGS@
-AM_CXXFLAGS = --pedantic -Wall @fuse_CFLAGS@ @libssl_CFLAGS@ -I../src
+AM_CFLAGS = -Wall -std=c99 @fuse_CFLAGS@ @libssl_CFLAGS@
+AM_CXXFLAGS = -Wall @fuse_CFLAGS@ @libssl_CFLAGS@ -I../src
 
 check_PROGRAMS = encode_test decode_test
 TESTS = encode_test decode_test
