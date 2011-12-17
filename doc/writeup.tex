@@ -1,0 +1,137 @@
+% template-v1.tex: LaTeX2e template for Usenix papers.
+% Version: usetex-v1, 31-Oct-2002
+% Revision history at end.
+
+\documentclass[webversion,endnotes,11pt]{usetex-v1}
+% Choose the appropriate option:
+%
+% 1. workingdraft:
+%
+%       For initial submission and shepherding.  Features prominent
+%       date, notice of draft status, page numbers, and annotation
+%       facilities.  The three supported annotation macros are:
+%               \edannote{text}         -- anonymous annotation note
+%               \begin{ednote}{who}     -- annotation note attributed
+%                 text                          to ``who''
+%               \end{ednote}
+%               \HERE                   -- a marker that can be left
+%                                               in the text and easily
+%                                               searched for later
+% 2. proof:
+%
+%         A galley proof identical to the final copy except for page
+%         numbering and proof date on the bottom.  Annotations are
+%         removed.
+%
+% 3. webversion:
+%
+%       A web-publishable version, uses \docstatus{} to indicate
+%       publication information (where and when paper was published),
+%       and page numbers.
+%
+% 4. finalversion:
+%
+%       The final camera-ready-copy (CRC) version of the paper.
+%       Published in conference proceedings.  This doesn't include
+%       page numbers, annotations, or draft status (Usenix adds
+%       headers, footers, and page numbers onto the CRC).
+%
+% If several are used, the last one in this list wins
+%
+
+%
+% In addition, the option "endnotes" permits the use of the
+% otherwise-disabled, Usenix-deprecated footnote{} command in
+% documents.  In this case, be sure to include a
+% \makeendnotes command at the end of your document or
+% the endnotes will not actually appear.
+%
+
+% These packages are optional, but useful
+\usepackage{epsfig}     % postscript figures
+\usepackage{url}        % \url{} command with good linebreaks
+
+\begin{document}
+
+\title{SFSFSSFSF: A Simple File System For Storing Secret Files in Sound Files}
+
+% authors.  separate groupings with \and.
+\author{
+\authname{Patrick Hulin, Michael McCanna, and Duncan Townsend}
+\authaddr{Massachusetts Institute of Technology}
+%
+} % end author
+
+\maketitle
+\pagestyle{empty}
+\section{Introduction}
+SFSFSSFSF is a steganographic, deniable filesystem which allows for the storage and covert network transmission of data, hidden in audio files.
+
+\section{Motivation}
+Encryption is relatively ubiquitous as the primary cryptographic medium of choice for keeping sensitive data indecipherable. There is much discussion and effort to make encryption strong from a mathematical standpoint, to make it computationally infeasible to break the encryption. However, very little attention is directed towards “rubber-hose attacks”; many people either assume that whatever stores the keys to unlock encryption is very well protected from a physical standpoint, or by further encryption. Perhaps people just do not have extremely sensitive data, or if they do, have large sums of money to spend on physical protections.
+
+Steganography, which seeks to hide information (not just make it indecipherable), is an extremely good way to protect against rubber-hose attacks. Because it is rather unusual to carry around large amounts of highly entropic data, steganography hides sensitive information in very insensitive or public data. Usually some sort of media that normally has high entropy is chosen--the amount of randomness in the data is the steganographic storage density.
+
+Sound files are a good steganographic medium because they are both ubiquitous and are relatively large files to begin with. Other steganographic mediums can be suspicious in large numbers (image files), but it is quite common for people to maintain large, personal music libraries. Furthermore, because sound files are large, they have the capacity for storing large amounts of data inconspicuously. Users also frequently transfer large sound files over networks in the context of peer-to-peer file sharing programs, so one can even transfer and store secret data in redundant, public areas like BitTorrent, further minimizing suspicion, and boosting convenience.
+
+\section{Design}
+The data contained in the filesystem is stored in the low-order bits of the samples in losslessly compressed audio files. In most music, the low-order bits of the samples are highly entropic; for example, the utility ent\footnote{http://www.fourmilab.ch/random/} estimates the entropy of the low-order bits of Pink Floyd’s Time at 7.99996 bits per byte. This value is similar to that of data encrypted using our algorithms.
+
+The choice of sound files as our storage medium introduces a few important caveats. Because there are relatively few different sound files, it would be possible for an attacker to create a list of all known-good sound files and compare the sound files on a captured system against that list. To avoid this attack, only sound files that have been transcoded or recorded on the user’s computer should be used to create the filesystem. This ensures that the attacker cannot check the sound files present on the user’s computer against known sound files. In addition, electronic music is insufficiently entropic to store random data in. Ideally in some future implementation, entropy checking would be performed on each segment of sound file before storing data in it.
+
+We chose to use FUSE (Filesystem in USErspace) as the framework for our filesystem, as FUSE modules are theoretically portable across UNIX variants, and do not require special privileges or a custom kernel module like other filesystems. For simplicity, our proof-of-concept implementation has a single, flat directory structure. All files are encrypted with strong encryption which appears as random noise without the key, preventing an observer who suspects the presence of hidden data from determining whether or not it is present.
+
+\section{Implementation}
+Essentially all of the code (about 2,000 lines) was written in C or C++.  We used ffmpeg for audio encoding/decoding. As it is difficult to use the associated libraries, we simply wrapped around the ffmpeg binary.
+
+\subsection{Filesystem}
+The filesystem is stored across audio files, with one hidden file per audio file. Each hidden file is encoded in the low-order bits of the samples of the audio files, which must use a lossless codec. An additional audio file is designated as the “superblock file”, containing hashes of the beginnings of other files in the system. Thus, after a user designates the superblock file and the encryption key, SFSFSSFSF can search for the rest of the files that make up the filesystem. Each audio file has a header encoded in it which designates the file length and modification times, followed by the data of the file.
+
+FUSE has turned out to be highly unreliable - different implementations have different behaviors, and we are not sure that either of the implementations we used were correct.
+
+\subsection{Cryptography}
+We use AES-CTR-256 and HMAC-SHA256, along with the scrypt key derivation function for passphrase hardening. Each file begins with 72 bytes, the encryption key, HMAC key, and initialization vector concatenated with each other and then XOR’d with an OTP stored in the superblock. The HMAC over the encrypted data is concatenated onto the end of the encrypted data once encryption is finished.
+
+\section{Applications}
+The main intended use cases for SFSFSSFSF are those in which a user has essentially unmonitored access to his or her own computer, but in which network access is restricted. Thus, an adversary could not detect the presence of SFSFSSFSF, and would not suspect audio files sent over the network to contain hidden data - such a transfer could just be run-of-the-mill music piracy.
+
+\subsection{Further Work}
+Our proof of concept suffered from several technical difficulties. Ideally, SFSFSSFSF would be a cross-platform, portable application with all of its own dependencies. Realistically, FUSE turns out to be much more finicky than is desirable, with our proof of concept somewhat working on Mac OS X 10.7, but not at all on 10.6 or Linux kernel versions 2.6.x and 3.x.x.
+
+Modifying streams at a sub-byte level is difficult; the few investigations that we’ve seen have concluded that there really is not a good solution. In general, computer systems are designed to work at a byte level, and so it is not possible to fetch single bits from a stream. With a variable-length encoding such as ours, it is difficult to implement an interface between byte-level filesystem operations and the low-level encoding and decoding.
+
+Tests using our current implementation of SFSFSSFSF illustrate the severe performance costs of a cryptographic, steganographic filesystem. For SFSFSSFSF to feasibly act as a filesystem instead of an immutable data archive, multithreading or GPU/hardware offloading of the encryption and audio coding would be necessary. Several design choices remain to be made for an asynchronous version of the filesystem (volatile until fsync’d) in terms of recovery plan and data integrity guarantees.
+
+Finally, it extends beyond the scope of the project to do field testing against rubber-hose attacks, but future versions of SFSFSSFSF can benefit from sort of bounty could be offered for the secret messsage contained amongst a set of audio files stored distributively via Bittorrent.
+
+\makeendnotes
+\end{document}
+
+% Revision History:
+% designed specifically to meet requirements of
+%  TCL97 committee.
+% originally a template for producing IEEE-format articles using LaTeX.
+%   written by Matthew Ward, CS Department, Worcester Polytechnic Institute.
+% adapted by David Beazley for his excellent SWIG paper in Proceedings,
+%   Tcl 96
+% turned into a smartass generic template by De Clarke, with thanks to
+%   both the above pioneers
+% use at your own risk.  Complaints to /dev/null.
+% make it two column with no page numbering, default is 10 point
+
+% Munged by Fred Douglis <douglis@research.att.com> 10/97 to separate
+% the .sty file from the LaTeX source template, so that people can
+% more easily include the .sty file into an existing document.  Also
+% changed to more closely follow the style guidelines as represented
+% by the Word sample file.
+% This version uses the latex2e styles, not the very ancient 2.09 stuff.
+%
+
+% Revised July--October 2002 by Bart Massey, Chuck Cranor, Erez
+% Zadok and the FREENIX Track folks to ``be easier to use and work
+% better''. Hah.  Major changes include transformation into a
+% latex2e class file, better support for drafts, and some
+% layout improvements.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% for Ispell:
+% LocalWords:  workingdraft BCM ednote SubSections xfig SubSection joe
